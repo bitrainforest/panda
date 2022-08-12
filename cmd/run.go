@@ -65,6 +65,7 @@ func run(ctx *cli.Context) error {
 		log.Warn().Str("value", logLevelString).Err(err).Msg("Invalid level value, using info by default")
 	}
 
+	log.Info().Interface("conf", config.GetConfig()).Msg("Print the Config")
 	log.Info().Msg("starting the agent...")
 	eg := engine.InitEngine(config.GetConfig(), context.Background())
 
