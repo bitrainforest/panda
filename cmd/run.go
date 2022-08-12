@@ -38,18 +38,22 @@ func initConfig(ctx *cli.Context) {
 
 	conf := config.GetConfig()
 
-	if err := os.MkdirAll(conf.LogDir, 0755); err != nil {
+	if err := os.MkdirAll(conf.Log.Dir, 0755); err != nil {
 		log.Fatal().Err(err).Msg("Failed to create log dir")
 	}
 
 	os.Setenv("GIN_CONF_DIR", path.Dir(config.AppConfig.ConfigDir))
-	os.Setenv("GIN_LOG_DIR", config.AppConfig.LogDir)
+	os.Setenv("GIN_LOG_DIR", config.AppConfig.Log.Dir)
 }
 
 func run(ctx *cli.Context) error {
 	initConfig(ctx)
 
 	logLevelString := os.Getenv("LOG_LEVEL")
+	if logLevelString == "" {
+		logLevelString = config.AppConfig.Log.Level
+	}
+
 	if logLevelString == "" {
 		logLevelString = "debug"
 	}

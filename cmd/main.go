@@ -61,7 +61,7 @@ func main() {
 				Value:       "",
 				EnvVars:     []string{"LOGDIR"},
 				Usage:       "the log dir",
-				Destination: &config.AppConfig.LogDir,
+				Destination: &config.AppConfig.Log.Dir,
 			},
 		},
 		Commands: []*cli.Command{

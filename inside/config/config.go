@@ -3,8 +3,6 @@ package config
 import (
 	"fmt"
 	"io/ioutil"
-	"path"
-	"strings"
 	"time"
 
 	"github.com/imdario/mergo"
@@ -18,7 +16,6 @@ var (
 )
 
 type Config struct {
-	LogDir      string `yaml:"LogDir"`
 	ConfigDir   string `yaml:"-"`
 	Env         string `yaml:"-"`
 	Transformer struct {
@@ -43,18 +40,18 @@ type Config struct {
 		QueryURL       string        `yaml:"QueryURL"`
 		CallBack       string        `yaml:"CallBack"`
 		DownloadURL    string        `yaml:"DownloadURL"`
-		Timeout        int           `yaml:"timeout"`
+		Timeout        int           `yaml:"Timeout"`
 		PingURL        string        `yaml:"HeartURL"`
 		CheckFrequency time.Duration `yaml:"CheckFrequency"`
 		HeartFrequency time.Duration `yaml:"HeartFrequency"`
-		Token          string        `yaml:"token"`
-	} `yaml:"GH"`
+		Token          string        `yaml:"Token"`
+	} `yaml:"PandaRemote"`
 }
 
 // Init parse the yaml configuration file
 func Init(ctx *cli.Context) error {
 	if AppConfig.ConfigDir != "" {
-		if err := parseYAMLFile(path.Join(AppConfig.ConfigDir, strings.Replace(ctx.String("psm"), ".", "_", -1)+".yaml")); err != nil {
+		if err := parseYAMLFile(AppConfig.ConfigDir); err != nil {
 			panic(err)
 		}
 	}
@@ -64,7 +61,9 @@ func Init(ctx *cli.Context) error {
 
 func parseYAMLFile(filePath string) error {
 	// todo: make config adjust the env
-	AppConfig.Env = "Product"
+	if AppConfig.Env == "" {
+		AppConfig.Env = "Testing"
+	}
 
 	var data map[string]Config
 	content, err := ioutil.ReadFile(filePath)
