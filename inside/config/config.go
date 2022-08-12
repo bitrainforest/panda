@@ -60,7 +60,6 @@ func Init(ctx *cli.Context) error {
 }
 
 func parseYAMLFile(filePath string) error {
-	// todo: make config adjust the env
 	if AppConfig.Env == "" {
 		AppConfig.Env = "Testing"
 	}

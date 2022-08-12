@@ -32,25 +32,7 @@ type client struct {
 }
 
 func Init() {
-	//todo: config
-	/*
-		cfg := config.Get()
-		domain := cfg.Server.Domain
-		path := cfg.Server.Path
-		u, err := url.Parse(domain)
-		if err != nil {
-			panic(fmt.Errorf("domain error: %s", err))
-		}
-		u.Path = path
-
-		cluster := cfg.Cluster
-		host := cfg.HostIP
-		uuid := cfg.UUID
-
-
-	*/
 	header := http.Header{}
-	// tlb需要host头
 	c = &client{
 		ws:      connector.NewConn("localhost:1234/websocket", header),
 		readCh:  make(chan *connector.Message, 16),

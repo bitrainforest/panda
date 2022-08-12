@@ -285,8 +285,8 @@ func (d Downloader) startDownloadWorker() {
 
 			if err := d.downloadRange(p.start, p.end); err != nil {
 				fmt.Printf("[ERR] Downloader downloadRange err: %s\n", err)
-				// todo: fix this problem
-				d.downCh <- p
+				// todo: limit the retry
+				go func() { d.downCh <- p }()
 			} else {
 				d.wg.Done()
 			}
