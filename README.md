@@ -1,11 +1,11 @@
 # Introduce
 what's Panda agent?  
 
-Panda agent help you download the sectors in our Sealing as a service Platform which.
+Panda agent is a high performance agent programm with high security, which will help you download the sectors in our Sealing as a service Platform.
 What you need to do is just download and run the agent, then no other action required.
 
 # Download
- git clone https://github.com/bitrainforest/panda_agent.git 
+ git clone https://github.com/bitrainforest/PandaAgent.git
 
 # Build
 In your project's root path, exec:  
