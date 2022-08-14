@@ -71,14 +71,14 @@ type MinerCli struct {
 }'
 */
 type DeclareContent struct {
-	Method    string        `json:method",omitempty"`
-	DeclareID int           `json:id",omitempty"`
-	Params    []interface{} `json:params",omitempty"`
+	Method    string        `json:"method"`
+	DeclareID int           `json:"id"`
+	Params    []interface{} `json:"params"`
 }
 
 type MetaInfo struct {
-	Miner  int `json:Miner",omitempty"`
-	Number int `json:Number",omitempty"`
+	Miner  int `json:"Miner"`
+	Number int `json:"Number"`
 }
 
 func InitMinerCli(conf config.Config) MinerCli {

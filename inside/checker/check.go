@@ -80,8 +80,8 @@ func (c Checker) Ping() {
 }
 
 type AgentStatus struct {
-	Status       string `json:status",omitempty"`
-	NeedDownload int64  `json:need_download",omitempty"`
+	Status       string `json:"status,omitempty"`
+	NeedDownload int64  `json:"need_download,omitempty"`
 }
 
 // just ping, we do not hold the connection.
@@ -163,20 +163,20 @@ type Sector struct {
 }
 
 type checkResponse struct {
-	Code int    `json:code",omitempty"`
-	Msg  string `json:msg",omitempty"`
-	Now  int    `json:nowTime",omitempty"`
-	Data Data   `json:data",omitempty"`
+	Code int    `json:"code,omitempty"`
+	Msg  string `json:"msg,omitempty"`
+	Now  int    `json:"nowTime,omitempty"`
+	Data Data   `json:"data,omitempty"`
 }
 
 type Data struct {
-	List []DataItem `json:list",omitempty"`
+	List []DataItem `json:"list,omitempty"`
 }
 
 type DataItem struct {
-	MinerID    string `json:minerId",omitempty"`
-	SectorId   string `json:sectorId",omitempty"`
-	SectorType string `json:sectorType",omitempty"`
+	MinerID    string `json:"minerId,omitempty"`
+	SectorId   string `json:"sectorId,omitempty"`
+	SectorType string `json:"sectorType,omitempty"`
 }
 
 func (c Checker) check() ([]Sector, error) {

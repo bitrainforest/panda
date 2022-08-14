@@ -215,12 +215,12 @@ func (t Transformer) DeclareSector(sectorID int) error {
 }
 
 type DownloadCallBackContent struct {
-	Action     string `json:action",omitempty"`
-	Status     string `json:status",omitempty"`
-	StatusCode int    `json:int",omitempty"`
-	SectorID   int    `json:sectorID",omitempty"`
-	MinerID    string `json:inerID",omitempty"`
-	ErrMsg     string `json:errMsg",omitempty"`
+	Action     string `json:"action,omitempty"`
+	Status     string `json:"status,omitempty"`
+	StatusCode int    `json:"int,omitempty"`
+	SectorID   int    `json:"sectorID,omitempty"`
+	MinerID    string `json:"inerID,omitempty"`
+	ErrMsg     string `json:"errMsg,omitempty"`
 }
 
 func (t Transformer) CallBack(content DownloadCallBackContent) error {
