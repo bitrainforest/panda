@@ -92,7 +92,6 @@ func InitMinerCli(conf config.Config) MinerCli {
 	}
 }
 
-// todo: bugfix
 func (mc MinerCli) SectorDeclare(sectorID int, sft SectorFileType) error {
 	content := DeclareContent{
 		Method:    MethodFilecoinStorageDeclareSector,
@@ -100,7 +99,6 @@ func (mc MinerCli) SectorDeclare(sectorID int, sft SectorFileType) error {
 	}
 
 	content.Params = append(content.Params, mc.storageID)
-	// Note(freddie): need fix
 	content.Params = append(content.Params, MetaInfo{
 		Miner:  mc.id,
 		Number: sectorID,
