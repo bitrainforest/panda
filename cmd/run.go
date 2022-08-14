@@ -57,7 +57,7 @@ func run(ctx *cli.Context) error {
 	if logLevelString == "" {
 		logLevelString = "debug"
 	}
-	// initialize logger level
+
 	lvl, err := zerolog.ParseLevel(logLevelString)
 	if err == nil {
 		zerolog.SetGlobalLevel(lvl)

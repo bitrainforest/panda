@@ -29,7 +29,9 @@ func InitEngine(conf config.Config, ctx context.Context) Engine {
 func (eg Engine) Run() error {
 	log.Info().Msgf("[Engine] Engine Start.")
 	eg.Checker.Ping()
-	eg.Checker.Check(eg.Buf)
+	//eg.Checker.Check(eg.Buf)
+	// todo: test code
+	eg.Buf <- checker.Sector{ID: 21}
 	eg.Transformer.Run(eg.Buf)
 	return nil
 }

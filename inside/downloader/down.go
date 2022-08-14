@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -54,6 +55,7 @@ type Transformer struct {
 	cancel      context.CancelFunc
 	callBackURL string
 	token       string
+	workDir     string
 }
 
 func InitTransformer(conf config.Config, ctx context.Context) Transformer {
@@ -72,6 +74,7 @@ func InitTransformer(conf config.Config, ctx context.Context) Transformer {
 		minerID:                  conf.Miner.ID,
 		downloadURL:              conf.GH.DownloadURL,
 		token:                    conf.GH.Token,
+		workDir:                  conf.Transformer.WorkDir,
 	}
 	t.ch = make(chan checker.Sector, t.MaxDownloader)
 	t.ctx, t.cancel = context.WithCancel(ctx)
@@ -81,6 +84,7 @@ func InitTransformer(conf config.Config, ctx context.Context) Transformer {
 	return t
 }
 
+// todo: run code need improve
 func (t Transformer) Run(buf chan checker.Sector) {
 	go func() {
 		for {
@@ -124,30 +128,41 @@ func (t Transformer) Run(buf chan checker.Sector) {
 					}
 					continue
 				}
+				var (
+					target string
+					srcURL string
+				)
 
-				target := fmt.Sprintf("%s/s-%s-%d", t.SealedDir, t.minerID, s.ID)
-				srcURL := fmt.Sprintf("%s/sealedsectors/%s/%d", t.downloadURL, t.minerID, s.ID)
+				target = fmt.Sprintf("%s/s-%s-%d", t.SealedDir, t.minerID, s.ID)
+				srcURL = fmt.Sprintf("%ssealedsectors/%s/%d", t.downloadURL, t.minerID, s.ID)
 				if _, err := os.Stat(target); err == nil {
 					// file exist just retry download cache file
 					log.Info().Msgf("[Transformer] target: %s exist, ignore", target)
 				} else {
 					log.Debug().Msgf("[Transformer] start download target: %s, src: %s", target, srcURL)
-					d := InitDownloader(srcURL, target, t.transformPartSize, t.singleDownloadMaxWorkers, false, t.ctx)
+					d := InitDownloader(srcURL, target, "", t.token, t.minerID, t.transformPartSize, t.singleDownloadMaxWorkers, s.ID, false, true, t.ctx)
 					if err := d.DownloadFile(); err != nil {
-						log.Error().Msgf("[Transformer] DownloadFile sector's metainfo: %+v, err: %s", s, err)
+						log.Error().Msgf("[Transformer] Download sealed file failed, sector's metainfo: %+v, err: %s", s, err)
 						// need retry
 						go func() { t.ch <- s }()
 						continue
 					}
 				}
 
-				target = fmt.Sprintf("%s/s-%s-%d", t.CacheDir, t.minerID, s.ID)
+				target = fmt.Sprintf("%s/s-%s-%d", t.workDir, t.minerID, s.ID)
 				// we now support 32GB sector's download
-				srcURL = fmt.Sprintf("%s/sectortree/%s/32/%d", t.downloadURL, t.minerID, s.ID)
+				srcURL = fmt.Sprintf("%ssectortree/%s/32/%d", t.downloadURL, t.minerID, s.ID)
+
+				if _, err := os.Stat(target); err == nil {
+					// remove if exist
+					log.Debug().Msgf("[Downloader] exist, rm: %s ", target)
+					os.Remove(target)
+				}
+
 				log.Debug().Msgf("[Transformer] start download target: %s, src: %s", target, srcURL)
-				d := InitDownloader(srcURL, target, t.transformPartSize, t.singleDownloadMaxWorkers, true, t.ctx)
+				d := InitDownloader(srcURL, target, t.CacheDir, t.token, t.minerID, t.transformPartSize, t.singleDownloadMaxWorkers, s.ID, true, false, t.ctx)
 				if err := d.DownloadFile(); err != nil {
-					log.Error().Msgf("[Transformer] DownloadFile sector's metainfo: %+v, err: %s", s, err)
+					log.Error().Msgf("[Transformer] DownloadFile cache failed, sector's metainfo: %+v, err: %s", s, err)
 					// need retry
 					go func() { t.ch <- s }()
 					continue
@@ -224,6 +239,7 @@ func (t Transformer) CallBack(content DownloadCallBackContent) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode/100 != 2 {
 		return fmt.Errorf("Transformer CallBack err status: %d", resp.StatusCode)
@@ -239,6 +255,8 @@ type DownloadPart struct {
 
 // one download task <=> one Downloader
 type Downloader struct {
+	minerID  string
+	sectorID int
 	// 一次下载中最多开启 maxWorkers 个下载 goroutine
 	maxWorkers int
 	// worker 在下载时下载的分片大小
@@ -248,102 +266,151 @@ type Downloader struct {
 	srcFileURL string
 	// 文件在本地的绝对路径
 	targetFile string
-	// 解压 cache 压缩文件需要
+	// targetPath 解压 cache 压缩文件需要
 	targetPath    string
 	downCh        chan DownloadPart
 	decompression bool
 	wg            sync.WaitGroup
 	ctx           context.Context
 	cancel        context.CancelFunc
+	token         string
+	depart        bool
 }
 
-func InitDownloader(downloadURL, targetFile string, partSize, maxWorkers int, decompression bool, ctx context.Context) Downloader {
-	d := Downloader{
+// todo: too many params
+func InitDownloader(downloadURL, targetFile, targetPath, token, minerID string, partSize, maxWorkers, sectorID int,
+	decompression, depart bool, ctx context.Context) *Downloader {
+	d := &Downloader{
 		cli: &http.Client{
-			Timeout: time.Duration(5) * time.Second,
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
+			},
+			// todo: config this timeout
+			// need increase if read response content timeout
+			Timeout: time.Duration(10) * time.Minute,
 		},
 		maxWorkers:    5,
 		partSize:      partSize,
 		srcFileURL:    downloadURL,
-		targetFile:    targetFile,
 		decompression: decompression,
+		token:         token,
+		wg:            sync.WaitGroup{},
+		depart:        depart,
+		targetFile:    targetFile,
+		targetPath:    targetPath,
+		minerID:       minerID,
+		sectorID:      sectorID,
 	}
 
-	d.downCh = make(chan DownloadPart, d.maxWorkers)
+	d.downCh = make(chan DownloadPart, 1024)
 	d.ctx, d.cancel = context.WithCancel(ctx)
 
 	return d
 }
 
-func (d Downloader) startDownloadWorker() {
+func (d *Downloader) startDownloadWorker() {
+	defer func() {
+		log.Debug().Msgf("[Downloader] worker finish task")
+	}()
+
 	for {
 		select {
 		case p, ok := <-d.downCh:
+			log.Debug().Msgf("[Downloader] worker receive a download part: %+v", p)
 			if !ok {
-				break
+				log.Info().Msgf("[Downloader] worker's downCh is closed")
+				return
 			}
 
 			if err := d.downloadRange(p.start, p.end); err != nil {
-				fmt.Printf("[ERR] Downloader downloadRange err: %s\n", err)
-				// todo: limit the retry
-				go func() { d.downCh <- p }()
-			} else {
-				d.wg.Done()
+				log.Error().Msgf("[Downloader] retry download part: %+v, downloadRange err: %s\n", p, err)
+				// retry until successfully
+				go func() {
+					d.downCh <- p
+				}()
+				continue
 			}
+
+			log.Debug().Msgf("[Downloader download part: %+v successfully", p)
+			d.wg.Done()
 		case <-d.ctx.Done():
-			break
+			log.Debug().Msgf("[Downloader] worker's ctx done'")
+			return
 		}
 	}
 }
 
-func (d Downloader) downloadRange(start, end int64) error {
+func (d *Downloader) downloadRange(start, end int64) error {
 	// first get file's lenght and check the range.
 	req, err := http.NewRequest("GET", d.srcFileURL, nil)
 	if err != nil {
 		return err
 	}
 
-	req.Header.Set("Token", "abc") // need configurable
-	req.Header.Set("Range", "bytes=0-1")
+	req.Header.Set("Token", d.token) // need configurable
+	req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", start, end))
 	resp, err := d.cli.Do(req)
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
+	if resp.StatusCode/100 != 2 {
+		b, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+
+		return fmt.Errorf("range download errstatus: %d, body: %s", resp.StatusCode, string(b))
+	}
 
 	fd, err := os.OpenFile(d.targetFile, os.O_WRONLY, os.FileMode(0664))
-	// todo: fd seek here may have problem, test it
+	if err != nil {
+		return err
+	}
+	defer fd.Close()
+
 	_, err = fd.Seek(start, os.SEEK_SET)
 	if err != nil {
 		return err
 	}
 
-	io.Copy(fd, resp.Body)
+	_, err = io.Copy(fd, resp.Body)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
 
 // need change when server support Head a file.
-func (d Downloader) headFile() (int64, error) {
+func (d *Downloader) headFile() (int64, error) {
 	// first get file's lenght and check the range.
 	req, err := http.NewRequest("GET", d.srcFileURL, nil)
 	if err != nil {
 		return -1, err
 	}
 
-	req.Header.Set("Token", "abc") // need configurable
+	req.Header.Set("Token", d.token) // need configurable
 	req.Header.Set("Range", "bytes=0-1")
 	resp, err := d.cli.Do(req)
 	if err != nil {
 		return -1, err
 	}
+	defer resp.Body.Close()
 
-	lenStr := strings.Split(resp.Header.Get("content-range"), "/")[1]
-	len, _ := strconv.ParseInt(lenStr, 10, 64)
+	s := strings.Split(resp.Header.Get("content-range"), "/")
+	if len(s) < 2 {
+		return -1, fmt.Errorf("range not supported")
+	}
+
+	len, _ := strconv.ParseInt(s[1], 10, 64)
 	return len, nil
 }
 
-func (d Downloader) scheduleDownload(len int64) {
-	fmt.Printf("[debug] Downloader start scheduleDownload\n")
+func (d *Downloader) scheduleDownload(len int64) {
+	log.Debug().Msgf("[Downloader] start scheduleDownload")
 	count := len / int64(d.partSize)
 	start := int64(0)
 	for i := int64(0); i < count; i++ {
@@ -368,36 +435,83 @@ func (d Downloader) scheduleDownload(len int64) {
 		d.downCh <- part
 	}
 
-	fmt.Printf("[debug] Downloader finish scheduleDownload\n")
+	log.Debug().Msgf("[Downloader] finish scheduleDownload")
 }
 
-func (d Downloader) DownloadFile() error {
-	len, err := d.headFile()
+func (d *Downloader) download() error {
+	// first get file's lenght and check the range.
+	req, err := http.NewRequest("GET", d.srcFileURL, nil)
 	if err != nil {
 		return err
 	}
 
-	// create target file
+	req.Header.Set("Token", d.token)
+	resp, err := d.cli.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
 	fd, err := os.OpenFile(d.targetFile, os.O_WRONLY|os.O_CREATE, os.FileMode(0664))
 	if err != nil {
 		return err
 	}
-	fd.Close()
-
-	for i := 0; i < d.maxWorkers; i++ {
-		go d.startDownloadWorker()
+	_, err = io.Copy(fd, resp.Body)
+	if err != nil {
+		return err
 	}
 
-	d.scheduleDownload(len)
-	// wait download finish
-	d.wg.Wait()
-	// stop all workers
+	return nil
+}
+
+func (d *Downloader) DownloadFile() error {
+	if !d.depart {
+		// todo: serverside should support multipart download for cache
+		if _, err := os.Stat(d.targetFile); err == nil {
+			// do nothing
+			log.Debug().Msgf("[Downloader] targetfile: %s exist", d.targetFile)
+		} else {
+			if err := d.download(); err != nil {
+				return err
+			}
+		}
+
+		log.Info().Interface("src", d.srcFileURL).Interface("target", d.targetFile).Msgf("[Downloader] download successfully")
+	} else {
+		// create target file
+		fd, err := os.OpenFile(d.targetFile, os.O_WRONLY|os.O_CREATE, os.FileMode(0664))
+		if err != nil {
+			return err
+		}
+		fd.Close()
+
+		// multipart download
+		len, err := d.headFile()
+		if err != nil {
+			return err
+		}
+
+		for i := 0; i < d.maxWorkers; i++ {
+			log.Debug().Msgf("[Downloader] startDownloadWorker")
+			go d.startDownloadWorker()
+		}
+		d.scheduleDownload(len)
+
+		log.Info().Msgf("[Downloader] Waiting file downloaded")
+		// wait download finish
+		d.wg.Wait()
+		log.Info().Interface("src", d.srcFileURL).Interface("target", d.targetFile).Msgf("[Downloader] download successfully")
+	}
+
+	// stop all workers, avoid gorounine leak
 	d.cancel()
 
 	// cache file need decompress
 	if d.decompression {
-		if err := untar(d.targetFile, d.targetPath); err != nil {
-			fmt.Printf("[debug] downloader untar err: %s\n", err)
+		log.Info().Msgf("[Downloader] untar targetFile: %s, targetPath: %s", d.targetFile, d.targetPath)
+		os.Mkdir(fmt.Sprintf("%s/s-%s-%d", d.targetPath, d.minerID, d.sectorID), os.FileMode(0664))
+		if err := untar(d.targetFile, strings.TrimSuffix(d.targetPath, "cache")); err != nil {
+			log.Error().Msgf("[Downloader] untar err: %s\n", err)
 			// the file maybe broken, need retry
 			return err
 		}

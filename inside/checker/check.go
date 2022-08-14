@@ -3,10 +3,12 @@ package checker
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -37,6 +39,11 @@ type Checker struct {
 func InitChecker(conf config.Config, parentCtx context.Context) Checker {
 	var c Checker
 	c.cli = &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		},
 		Timeout: time.Duration(conf.GH.Timeout) * time.Second,
 	}
 
@@ -98,11 +105,13 @@ func (c Checker) ping() error {
 		return err
 	}
 
-	req.Header.Set("Authorization", c.token)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("minerToken", c.token)
 	resp, err := c.cli.Do(req)
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode/100 != 2 {
 		return fmt.Errorf("Checker ping err status: %d", resp.StatusCode)
@@ -154,20 +163,24 @@ type Sector struct {
 }
 
 type checkResponse struct {
-	Code int                 `json:code",omitempty"`
-	Msg  string              `json:msg",omitempty"`
-	Now  int                 `json:nowTime",omitempty"`
-	Data []checkResponseItem `json:list",omitempty"`
+	Code int    `json:code",omitempty"`
+	Msg  string `json:msg",omitempty"`
+	Now  int    `json:nowTime",omitempty"`
+	Data Data   `json:data",omitempty"`
 }
 
-type checkResponseItem struct {
+type Data struct {
+	List []DataItem `json:list",omitempty"`
+}
+
+type DataItem struct {
 	MinerID    string `json:minerId",omitempty"`
-	SectorId   int    `json:sectorId",omitempty"`
+	SectorId   string `json:sectorId",omitempty"`
 	SectorType string `json:sectorType",omitempty"`
 }
 
 func (c Checker) check() ([]Sector, error) {
-	req, err := http.NewRequest("POST", c.checkURL, nil)
+	req, err := http.NewRequest("GET", c.checkURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -178,6 +191,7 @@ func (c Checker) check() ([]Sector, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode/100 != 2 {
 		return nil, fmt.Errorf("Checker check err status: %d", resp.StatusCode)
@@ -199,21 +213,24 @@ func (c Checker) check() ([]Sector, error) {
 		return nil, fmt.Errorf("Checker response msg: %s", result.Msg)
 	}
 
-	if len(result.Data) > 0 {
+	if len(result.Data.List) > 0 {
 		sectors := make([]Sector, 0, 5)
-		for _, item := range result.Data {
+		for _, item := range result.Data.List {
 			if item.MinerID != c.minerID {
 				continue
 			}
 
+			sectorID, _ := strconv.Atoi(item.SectorId)
 			sectors = append(sectors, Sector{
-				ID:  item.SectorId,
+				ID:  sectorID,
 				Try: 0,
 			})
 		}
 
 		return sectors, nil
 	}
+
+	log.Debug().Msgf("[Checker] there is no sectors need download")
 
 	return nil, nil
 }

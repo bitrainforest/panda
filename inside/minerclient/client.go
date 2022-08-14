@@ -48,7 +48,7 @@ func (t SectorFileType) String() string {
 
 type MinerCli struct {
 	cli       *http.Client
-	target    string
+	url       string
 	apiToken  string
 	id        int
 	storageID string
@@ -86,6 +86,7 @@ func InitMinerCli(conf config.Config) MinerCli {
 	return MinerCli{
 		cli:       http.DefaultClient,
 		apiToken:  conf.Miner.APIToken,
+		url:       conf.Miner.Address,
 		id:        id,
 		storageID: conf.Miner.StorageID,
 	}
@@ -112,7 +113,7 @@ func (mc MinerCli) SectorDeclare(sectorID int, sft SectorFileType) error {
 		return err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, mc.target, bytes.NewBuffer(res))
+	req, err := http.NewRequest(http.MethodPost, mc.url, bytes.NewBuffer(res))
 	if err != nil {
 		return err
 	}
