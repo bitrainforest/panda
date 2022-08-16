@@ -1,23 +1,29 @@
-[WIP]
-# Introduce
-what's Panda agent?  
+<h1 align="center">Panda</h1>
 
-Panda agent is a high performance agent programm with high security, which will help you download the sectors in our Sealing as a service Platform.
-What you need to do is just download and run the agent, then no other action required.
+## What's Panda?
 
-# Download
- git clone https://github.com/bitrainforest/PandaAgent.git
+Panda is a high performance agent build with high security in mind, the functionality is download the sectors from Pandarua Platform.
 
-# Build
-In your project's root path, exec:  
+## Getting start
+
+You need to make sure `go` is in your PATH. The version must `>= 1.18.0`.
+
+```shell
+# Clone the repo
+git clone https://github.com/bitrainforest/PandaAgent.git
+
+# Build the agent
+cd PandaAgent && make build
 ```
-make build
-```
-Then the panda executable file will exist in the ./output/bin directory.  
 
-You can use Panda -help for more information.
-```
-./Panda -help
+The executable file is in `./output/bin`.
+
+## Usage
+
+You can use `Panda help` to see all available commands.
+
+```shell
+Panda -help
 NAME:
    github.com/pandarua-agent - A new cli application
 USAGE:
@@ -34,20 +40,21 @@ GLOBAL OPTIONS:
    --log-dir value   the log dir [$LOGDIR]
    --version, -v     print the version (default: false)
 ```
-# Run
-```
-Panda --conf-dir /your/config --log-dir /your/log -run 
+
+### Run the agnet
+
+```shell
+Panda --conf-dir [your config path] --log-dir [your log path] -run
 ```
 
-# Config
+## Config Example
 
-This is example config below:
-```
-Product: ## this key should be consistent with '--env', default is 'Testing'
+```shell
+Product: ## This key should be consistent with '--env', default is 'Testing'
  Transformer:
-   MaxDownloader: 5  ## max downloader exist in agent
-   MaxDownloadRetry: 3 ## max retry numbers for one download task
-   TransformPartSize: 5242880 ## when download big file, the single part size
+   MaxDownloader: 5  ## Max downloader exist in agent
+   MaxDownloadRetry: 3 ## Max retries for one download task
+   TransformPartSize: 5242880 ## The single part size when download large file
    SingleDownloadMaxWorkers: 5  ## Parallel workers in multipart download
  Miner:
    MinerSealedPath: "/your/sealed/path"
@@ -57,9 +64,9 @@ Product: ## this key should be consistent with '--env', default is 'Testing'
    StorageID: "yourSealedStorageID"
  Log:
    Level: "Debug"
-   Dir: "/your/log/path" 
+   Dir: "/your/log/path"
  PandaRemote:
-   Address: "Address"  
+   Address: "Address"
    QueryURL: "QueryURL"
    CallBack: "CallBack"
    DownloadURL: "DownloadURL"
@@ -68,5 +75,4 @@ Product: ## this key should be consistent with '--env', default is 'Testing'
    CheckFrequency: "10s"
    HeartFrequency: "5s"
    Token: "PandaToken"
-   
 ```

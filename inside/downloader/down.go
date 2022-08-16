@@ -157,17 +157,29 @@ func (t Transformer) Run(buf chan checker.Sector) {
 					// remove if exist
 					log.Debug().Msgf("[Downloader] exist, rm: %s ", target)
 					os.Remove(target)
+				} else {
+					log.Debug().Msgf("[Transformer] start download target: %s, src: %s", target, srcURL)
+					d := InitDownloader(srcURL, target, t.CacheDir, t.token, t.minerID, t.transformPartSize, t.singleDownloadMaxWorkers, s.ID, true, false, t.ctx)
+					if err := d.DownloadFile(); err != nil {
+						log.Error().Msgf("[Transformer] DownloadFile cache failed, sector's metainfo: %+v, err: %s", s, err)
+						// need retry
+						go func() { t.ch <- s }()
+						continue
+					}
 				}
 
-				log.Debug().Msgf("[Transformer] start download target: %s, src: %s", target, srcURL)
-				d := InitDownloader(srcURL, target, t.CacheDir, t.token, t.minerID, t.transformPartSize, t.singleDownloadMaxWorkers, s.ID, true, false, t.ctx)
-				if err := d.DownloadFile(); err != nil {
-					log.Error().Msgf("[Transformer] DownloadFile cache failed, sector's metainfo: %+v, err: %s", s, err)
-					// need retry
-					go func() { t.ch <- s }()
-					continue
+				log.Info().Msgf("[Transformer] miner: %s, sector: %d download success, do callback", t.minerID, s.ID)
+				if err := t.CallBack(DownloadCallBackContent{
+					Action:     ActionDownload,
+					Status:     StatusDownloadSuccessful,
+					StatusCode: StatusCodeOK,
+					SectorID:   s.ID,
+					MinerID:    t.minerID,
+				}); err != nil {
+					log.Error().Msgf("[Transformer] callback err: %s", err)
 				}
 
+				// todo: add retry
 				if err := t.DeclareSector(s.ID); err != nil {
 					log.Error().Msgf("[Transformer] miner: %s DeclareSector: %d err: %s", t.minerID, s.ID, err)
 					if err := t.CallBack(DownloadCallBackContent{
@@ -182,17 +194,16 @@ func (t Transformer) Run(buf chan checker.Sector) {
 					}
 
 					continue
-				}
-
-				log.Info().Msgf("[Transformer] miner: %s, sector: %d download and declare success, do callback", t.minerID, s.ID)
-				if err := t.CallBack(DownloadCallBackContent{
-					Action:     ActionDownload,
-					Status:     StatusDownloadSuccessful,
-					StatusCode: StatusCodeOK,
-					SectorID:   s.ID,
-					MinerID:    t.minerID,
-				}); err != nil {
-					log.Error().Msgf("[Transformer] callback err: %s", err)
+				} else {
+					if err := t.CallBack(DownloadCallBackContent{
+						Action:     ActionDeclare,
+						Status:     StatusDeclareSuccessful,
+						StatusCode: StatusCodeOK,
+						SectorID:   s.ID,
+						MinerID:    t.minerID,
+					}); err != nil {
+						log.Error().Msgf("[Transformer] callback err: %s", err)
+					}
 				}
 			case <-t.ctx.Done():
 				return
@@ -217,9 +228,9 @@ func (t Transformer) DeclareSector(sectorID int) error {
 type DownloadCallBackContent struct {
 	Action     string `json:"action,omitempty"`
 	Status     string `json:"status,omitempty"`
-	StatusCode int    `json:"int,omitempty"`
+	StatusCode int    `json:"statusCode,omitempty"`
 	SectorID   int    `json:"sectorID,omitempty"`
-	MinerID    string `json:"inerID,omitempty"`
+	MinerID    string `json:"minerID,omitempty"`
 	ErrMsg     string `json:"errMsg,omitempty"`
 }
 
