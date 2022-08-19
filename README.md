@@ -1,8 +1,8 @@
-<h1 align="center">Panda</h1>
+<h1 align="center">panda</h1>
 
-## What's Panda?
+## What's panda?
 
-Panda is a high performance agent build with high security in mind, the functionality is download the sectors from Pandarua Platform.
+panda is a high performance agent build with high security in mind, the functionality is download the sectors from Pandarua Platform.
 
 ## Getting start
 
@@ -20,10 +20,10 @@ The executable file is in `./output/bin`.
 
 ## Usage
 
-You can use `Panda help` to see all available commands.
+You can use `panda help` to see all available commands.
 
 ```shell
-Panda -help
+panda -help
 NAME:
    github.com/bitrainforest/PandaAgent - A new cli application
 USAGE:
@@ -44,7 +44,7 @@ GLOBAL OPTIONS:
 ### Run the agnet
 
 ```shell
-Panda --conf-dir [your config path] --log-dir [your log path] -run
+panda --conf-dir [your config path] --log-dir [your log path] run
 ```
 
 ## Config Example
