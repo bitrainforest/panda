@@ -1,13 +1,12 @@
-module pandarua-agent
+module github.com/bitrainforest/PandaAgent
 
 go 1.17
 
 require (
 	github.com/gorilla/websocket v1.5.0
 	github.com/imdario/mergo v0.3.13
-	github.com/bitrainforest/PandaAgent v0.0.1
 	github.com/rs/zerolog v1.27.0
-	github.com/urfave/cli/v2 v2.11.1
+	github.com/urfave/cli/v2 v2.11.2
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -17,8 +16,5 @@ require (
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
-	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
+	golang.org/x/sys v0.0.0-20210927094055-39ccf1dd6fa6 // indirect
 )
-
-
-replace github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.13.0
