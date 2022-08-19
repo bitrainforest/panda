@@ -33,17 +33,9 @@ func init() {
 func initConfig(ctx *cli.Context) {
 	if err := config.Init(ctx); err != nil {
 		log.Fatal().Err(err).Msg("failed to parse configuration file")
-		return
 	}
 
-	conf := config.GetConfig()
-
-	if err := os.MkdirAll(conf.Log.Dir, 0755); err != nil {
-		log.Fatal().Err(err).Msg("Failed to create log dir")
-	}
-
-	os.Setenv("GIN_CONF_DIR", path.Dir(config.AppConfig.ConfigDir))
-	os.Setenv("GIN_LOG_DIR", config.AppConfig.Log.Dir)
+	return
 }
 
 func run(ctx *cli.Context) error {
@@ -56,6 +48,14 @@ func run(ctx *cli.Context) error {
 
 	if logLevelString == "" {
 		logLevelString = "debug"
+	}
+
+	f, err := os.OpenFile(config.GetConfig().Log.Dir, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		defer f.Close()
+		log.Logger = log.Output(f)
 	}
 
 	lvl, err := zerolog.ParseLevel(logLevelString)

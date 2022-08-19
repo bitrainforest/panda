@@ -38,7 +38,6 @@ type Config struct {
 		Dir   string `yaml:"Dir"`
 	} `yaml:"Log"`
 	GH struct {
-		Address        string        `yaml:"Address"`
 		QueryURL       string        `yaml:"QueryURL"`
 		CallBack       string        `yaml:"CallBack"`
 		DownloadURL    string        `yaml:"DownloadURL"`
@@ -47,7 +46,7 @@ type Config struct {
 		CheckFrequency time.Duration `yaml:"CheckFrequency"`
 		HeartFrequency time.Duration `yaml:"HeartFrequency"`
 		Token          string        `yaml:"Token"`
-	} `yaml:"PandaRemote"`
+	} `yaml:"Platform"`
 }
 
 // Init parse the yaml configuration file
