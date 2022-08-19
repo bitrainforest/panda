@@ -10,7 +10,7 @@ import (
 )
 
 type Engine struct {
-	Transformer downloader.Transformer
+	Transformer *downloader.Transformer
 	Checker     checker.Checker
 	Buf         chan checker.Sector
 	ctx         context.Context

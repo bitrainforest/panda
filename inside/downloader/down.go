@@ -20,6 +20,7 @@ import (
 	"github.com/bitrainforest/PandaAgent/inside/checker"
 	"github.com/bitrainforest/PandaAgent/inside/config"
 	"github.com/bitrainforest/PandaAgent/inside/minerclient"
+	"github.com/patrickmn/go-cache"
 	"github.com/rs/zerolog/log"
 )
 
@@ -39,6 +40,7 @@ var (
 )
 
 type Transformer struct {
+	sync.Mutex
 	cli                      *http.Client
 	minerCli                 minerclient.MinerCli
 	CacheDir                 string
@@ -56,10 +58,12 @@ type Transformer struct {
 	callBackURL string
 	token       string
 	workDir     string
+	processingM map[int]bool
+	c           *cache.Cache
 }
 
-func InitTransformer(conf config.Config, ctx context.Context) Transformer {
-	t := Transformer{
+func InitTransformer(conf config.Config, ctx context.Context) *Transformer {
+	t := &Transformer{
 		cli: &http.Client{
 			Timeout: time.Duration(conf.GH.Timeout) * time.Second,
 		},
@@ -75,6 +79,8 @@ func InitTransformer(conf config.Config, ctx context.Context) Transformer {
 		downloadURL:              conf.GH.DownloadURL,
 		token:                    conf.GH.Token,
 		workDir:                  conf.Transformer.WorkDir,
+		processingM:              make(map[int]bool),
+		c:                        cache.New(5*time.Minute, 10*time.Minute),
 	}
 	t.ch = make(chan checker.Sector, t.MaxDownloader)
 	t.ctx, t.cancel = context.WithCancel(ctx)
@@ -84,8 +90,26 @@ func InitTransformer(conf config.Config, ctx context.Context) Transformer {
 	return t
 }
 
+func (t *Transformer) UnProcessing(sectorID int) {
+	t.Lock()
+	delete(t.processingM, sectorID)
+	t.Unlock()
+}
+
+// we only can check the sector recently as we store the processed data in memory
+func (t *Transformer) processed(sectorID string) bool {
+	if v, found := t.c.Get(sectorID); found {
+		exist := v.(string)
+		if exist == "true" {
+			return true
+		}
+	}
+
+	return false
+}
+
 // todo: run code need improve
-func (t Transformer) Run(buf chan checker.Sector) {
+func (t *Transformer) Run(buf chan checker.Sector) {
 	go func() {
 		for {
 			select {
@@ -93,6 +117,23 @@ func (t Transformer) Run(buf chan checker.Sector) {
 				if !ok {
 					log.Warn().Msgf("[Transformer] channel is cloesed, exit")
 					break
+				}
+
+				t.Lock()
+				exist, ok := t.processingM[s.ID]
+				if ok && exist {
+					// this sector is processing, just skip
+					t.Unlock()
+					log.Info().Interface("sector", s.ID).Msgf("[Transformer] processing, skip")
+					continue
+				}
+				t.processingM[s.ID] = true
+				t.Unlock()
+
+				if t.processed(strconv.Itoa(s.ID)) {
+					// this sector is processed recently, just skip
+					log.Info().Interface("sector", s.ID).Msgf("[Transformer] processed recently, skip")
+					continue
 				}
 
 				log.Debug().Msgf("[Transformer] try download s: %+v", s)
@@ -120,12 +161,14 @@ func (t Transformer) Run(buf chan checker.Sector) {
 						Action:     ActionDownload,
 						Status:     StatusDownloadFailed,
 						StatusCode: StatusCodeFailed,
-						SectorID:   s.ID,
+						SectorIDs:  []string{strconv.Itoa(s.ID)},
 						MinerID:    t.minerID,
 						ErrMsg:     ErrRetryExceed.Error(),
 					}); err != nil {
 						log.Error().Msgf("[Transformer] callback err: %s", err)
 					}
+
+					t.UnProcessing(s.ID)
 					continue
 				}
 				var (
@@ -136,17 +179,19 @@ func (t Transformer) Run(buf chan checker.Sector) {
 				target = fmt.Sprintf("%s/s-%s-%d", t.SealedDir, t.minerID, s.ID)
 				srcURL = fmt.Sprintf("%ssealedsectors/%s/%d", t.downloadURL, t.minerID, s.ID)
 				if _, err := os.Stat(target); err == nil {
-					// file exist just retry download cache file
-					log.Info().Msgf("[Transformer] target: %s exist, ignore", target)
-				} else {
-					log.Debug().Msgf("[Transformer] start download target: %s, src: %s", target, srcURL)
-					d := InitDownloader(srcURL, target, "", t.token, t.minerID, t.transformPartSize, t.singleDownloadMaxWorkers, s.ID, false, true, t.ctx)
-					if err := d.DownloadFile(); err != nil {
-						log.Error().Msgf("[Transformer] Download sealed file failed, sector's metainfo: %+v, err: %s", s, err)
-						// need retry
-						go func() { t.ch <- s }()
-						continue
-					}
+					// remove if exist
+					log.Info().Msgf("[Transformer] target: %s exist, remove", target)
+					os.Remove(target)
+				}
+
+				log.Debug().Msgf("[Transformer] start download target: %s, src: %s", target, srcURL)
+				d := InitDownloader(srcURL, target, "", t.token, t.minerID, t.transformPartSize, t.singleDownloadMaxWorkers, s.ID, false, true, t.ctx)
+				if err := d.DownloadFile(); err != nil {
+					log.Error().Msgf("[Transformer] Download sealed file failed, sector's metainfo: %+v, err: %s", s, err)
+					// need retry
+					go func() { t.ch <- s }()
+					t.UnProcessing(s.ID)
+					continue
 				}
 
 				target = fmt.Sprintf("%s/s-%s-%d", t.workDir, t.minerID, s.ID)
@@ -155,17 +200,18 @@ func (t Transformer) Run(buf chan checker.Sector) {
 
 				if _, err := os.Stat(target); err == nil {
 					// remove if exist
-					log.Debug().Msgf("[Downloader] exist, rm: %s ", target)
+					log.Info().Msgf("[Transformer] target: %s exist, remove", target)
 					os.Remove(target)
-				} else {
-					log.Debug().Msgf("[Transformer] start download target: %s, src: %s", target, srcURL)
-					d := InitDownloader(srcURL, target, t.CacheDir, t.token, t.minerID, t.transformPartSize, t.singleDownloadMaxWorkers, s.ID, true, false, t.ctx)
-					if err := d.DownloadFile(); err != nil {
-						log.Error().Msgf("[Transformer] DownloadFile cache failed, sector's metainfo: %+v, err: %s", s, err)
-						// need retry
-						go func() { t.ch <- s }()
-						continue
-					}
+				}
+
+				log.Debug().Msgf("[Transformer] start download target: %s, src: %s", target, srcURL)
+				d = InitDownloader(srcURL, target, t.CacheDir, t.token, t.minerID, t.transformPartSize, t.singleDownloadMaxWorkers, s.ID, true, false, t.ctx)
+				if err := d.DownloadFile(); err != nil {
+					log.Error().Msgf("[Transformer] DownloadFile cache failed, sector's metainfo: %+v, err: %s", s, err)
+					// need retry
+					go func() { t.ch <- s }()
+					t.UnProcessing(s.ID)
+					continue
 				}
 
 				log.Info().Msgf("[Transformer] miner: %s, sector: %d download success, do callback", t.minerID, s.ID)
@@ -173,20 +219,20 @@ func (t Transformer) Run(buf chan checker.Sector) {
 					Action:     ActionDownload,
 					Status:     StatusDownloadSuccessful,
 					StatusCode: StatusCodeOK,
-					SectorID:   s.ID,
+					SectorIDs:  []string{strconv.Itoa(s.ID)},
 					MinerID:    t.minerID,
 				}); err != nil {
 					log.Error().Msgf("[Transformer] callback err: %s", err)
 				}
 
-				// todo: add retry
 				if err := t.DeclareSector(s.ID); err != nil {
+					// if declare failed, we need user declare sector in current implement.
 					log.Error().Msgf("[Transformer] miner: %s DeclareSector: %d err: %s", t.minerID, s.ID, err)
 					if err := t.CallBack(DownloadCallBackContent{
 						Action:     ActionDeclare,
 						Status:     StatusDeclareFailed,
 						StatusCode: StatusCodeFailed,
-						SectorID:   s.ID,
+						SectorIDs:  []string{strconv.Itoa(s.ID)},
 						MinerID:    t.minerID,
 						ErrMsg:     err.Error(),
 					}); err != nil {
@@ -199,12 +245,15 @@ func (t Transformer) Run(buf chan checker.Sector) {
 						Action:     ActionDeclare,
 						Status:     StatusDeclareSuccessful,
 						StatusCode: StatusCodeOK,
-						SectorID:   s.ID,
+						SectorIDs:  []string{strconv.Itoa(s.ID)},
 						MinerID:    t.minerID,
 					}); err != nil {
 						log.Error().Msgf("[Transformer] callback err: %s", err)
 					}
 				}
+
+				t.c.Set(strconv.Itoa(s.ID), "true", cache.DefaultExpiration)
+				t.UnProcessing(s.ID)
 			case <-t.ctx.Done():
 				return
 			}
@@ -212,7 +261,7 @@ func (t Transformer) Run(buf chan checker.Sector) {
 	}()
 }
 
-func (t Transformer) DeclareSector(sectorID int) error {
+func (t *Transformer) DeclareSector(sectorID int) error {
 	// file download successfully, need send declare request to lotus-miner
 	if err := t.minerCli.SectorDeclare(sectorID, minerclient.FTSealed); err != nil {
 		return err
@@ -226,15 +275,15 @@ func (t Transformer) DeclareSector(sectorID int) error {
 }
 
 type DownloadCallBackContent struct {
-	Action     string `json:"action,omitempty"`
-	Status     string `json:"status,omitempty"`
-	StatusCode int    `json:"statusCode,omitempty"`
-	SectorID   int    `json:"sectorID,omitempty"`
-	MinerID    string `json:"minerID,omitempty"`
-	ErrMsg     string `json:"errMsg,omitempty"`
+	Action     string   `json:"action,omitempty"`
+	Status     string   `json:"status,omitempty"`
+	StatusCode int      `json:"statusCode,omitempty"`
+	SectorIDs  []string `json:"sectorIds,omitempty"`
+	MinerID    string   `json:"minerID,omitempty"`
+	ErrMsg     string   `json:"errMsg,omitempty"`
 }
 
-func (t Transformer) CallBack(content DownloadCallBackContent) error {
+func (t *Transformer) CallBack(content DownloadCallBackContent) error {
 	c, err := json.Marshal(content)
 	if err != nil {
 		return err
