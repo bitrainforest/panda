@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pandarua-agent/pkg/util"
+	"github.com/bitrainforest/PandaAgent/pkg/util"
 )
 
 type MessageType string

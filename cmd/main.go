@@ -8,12 +8,12 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/pandarua-agent/inside/config"
+	"github.com/bitrainforest/PandaAgent/inside/config"
 	"github.com/urfave/cli/v2"
 )
 
 const (
-	NAME = "github.com/pandarua-agent"
+	NAME = "github.com/bitrainforest/PandaAgent"
 )
 
 func init() {

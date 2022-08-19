@@ -7,8 +7,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	// todo: fix the import path named internal replace inside
-	"github.com/pandarua-agent/inside/connector"
-	"github.com/pandarua-agent/pkg/util"
+	"github.com/bitrainforest/PandaAgent/inside/connector"
+	"github.com/bitrainforest/PandaAgent/pkg/util"
 	"github.com/rs/zerolog/log"
 )
 

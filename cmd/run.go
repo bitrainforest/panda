@@ -10,9 +10,9 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/pandarua-agent/inside/config"
-	"github.com/pandarua-agent/inside/engine"
-	logwriter "github.com/pandarua-agent/inside/log"
+	"github.com/bitrainforest/PandaAgent/inside/config"
+	"github.com/bitrainforest/PandaAgent/inside/engine"
+	logwriter "github.com/bitrainforest/PandaAgent/inside/log"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v2"

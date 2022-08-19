@@ -17,9 +17,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pandarua-agent/inside/checker"
-	"github.com/pandarua-agent/inside/config"
-	"github.com/pandarua-agent/inside/minerclient"
+	"github.com/bitrainforest/PandaAgent/inside/checker"
+	"github.com/bitrainforest/PandaAgent/inside/config"
+	"github.com/bitrainforest/PandaAgent/inside/minerclient"
 	"github.com/rs/zerolog/log"
 )
 

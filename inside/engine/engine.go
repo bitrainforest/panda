@@ -3,9 +3,9 @@ package engine
 import (
 	"context"
 
-	"github.com/pandarua-agent/inside/checker"
-	"github.com/pandarua-agent/inside/config"
-	"github.com/pandarua-agent/inside/downloader"
+	"github.com/bitrainforest/PandaAgent/inside/checker"
+	"github.com/bitrainforest/PandaAgent/inside/config"
+	"github.com/bitrainforest/PandaAgent/inside/downloader"
 	"github.com/rs/zerolog/log"
 )
 

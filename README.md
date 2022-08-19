@@ -25,9 +25,9 @@ You can use `Panda help` to see all available commands.
 ```shell
 Panda -help
 NAME:
-   github.com/pandarua-agent - A new cli application
+   github.com/bitrainforest/PandaAgent - A new cli application
 USAGE:
-   github.com/pandarua-agent [global options] command [command options] [arguments...]
+   github.com/bitrainforest/PandaAgent [global options] command [command options] [arguments...]
 VERSION:
    No version
 COMMANDS:

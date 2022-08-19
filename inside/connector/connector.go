@@ -13,8 +13,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/bitrainforest/PandaAgent/pkg/util"
 	"github.com/gorilla/websocket"
-	"github.com/pandarua-agent/pkg/util"
 	"github.com/rs/zerolog/log"
 )
 

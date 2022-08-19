@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pandarua-agent/inside/config"
+	"github.com/bitrainforest/PandaAgent/inside/config"
 )
 
 const (
