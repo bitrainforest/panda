@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	AgentStatusNormal = "normal"
+	AgentStatusNormal = 2
 )
 
 type Checker struct {
@@ -80,8 +80,8 @@ func (c Checker) Ping() {
 }
 
 type AgentStatus struct {
-	Status       string `json:"status,omitempty"`
-	NeedDownload int64  `json:"need_download,omitempty"`
+	Status       int   `json:"status,omitempty"`
+	NeedDownload int64 `json:"need_download,omitempty"`
 }
 
 // just ping, we do not hold the connection.
