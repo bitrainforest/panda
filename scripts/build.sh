@@ -12,4 +12,6 @@ cd $BASEDIR
 echo go build -v -o ./output/bin/$BinaryName -v  ./cmd/.
 go build -o ./output/bin/$BinaryName -v  ./cmd/.
 
+cp ./output/bin/$BinaryName /usr/local/bin/
+
 chmod +x $BASEDIR/output/bin/*

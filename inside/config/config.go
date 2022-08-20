@@ -3,11 +3,20 @@ package config
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"time"
 
 	"github.com/imdario/mergo"
 	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v2"
+)
+
+const (
+	ENV_PANDA_PLATFORM_DOWNLOAD_QUERY    = "ENV_PANDA_PLATFORM_DOWNLOAD_QUERY"
+	ENV_PANDA_PLATFORM_DOWNLOAD_CALLBACK = "ENV_PANDA_PLATFORM_DOWNLOAD_CALLBACK"
+	ENV_PANDA_PLATFORM_DOWNLOAD          = "ENV_PANDA_PLATFORM_DOWNLOAD"
+	ENV_PANDA_PLATFORM_HEART             = "ENV_PANDA_PLATFORM_HEART"
+	ENV_PANDA_LOGDIR_DEFAULT             = "ENV_PANDA_LOGDIR_DEFAULT"
 )
 
 // global app config variable
@@ -57,12 +66,32 @@ func Init(ctx *cli.Context) error {
 		}
 	}
 
+	if AppConfig.GH.QueryURL == "" {
+		AppConfig.GH.QueryURL = os.Getenv(ENV_PANDA_PLATFORM_DOWNLOAD_QUERY)
+	}
+
+	if AppConfig.GH.CallBack == "" {
+		AppConfig.GH.CallBack = os.Getenv(ENV_PANDA_PLATFORM_DOWNLOAD_CALLBACK)
+	}
+
+	if AppConfig.GH.DownloadURL == "" {
+		AppConfig.GH.DownloadURL = os.Getenv(ENV_PANDA_PLATFORM_DOWNLOAD)
+	}
+
+	if AppConfig.GH.PingURL == "" {
+		AppConfig.GH.PingURL = os.Getenv(ENV_PANDA_PLATFORM_HEART)
+	}
+
+	if AppConfig.Log.Dir == "" {
+		AppConfig.Log.Dir = os.Getenv(ENV_PANDA_LOGDIR_DEFAULT)
+	}
+
 	return nil
 }
 
 func parseYAMLFile(filePath string) error {
 	if AppConfig.Env == "" {
-		AppConfig.Env = "Testing"
+		AppConfig.Env = "Default"
 	}
 
 	var data map[string]Config

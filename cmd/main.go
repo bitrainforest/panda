@@ -47,7 +47,7 @@ func main() {
 				Value:       "",
 				EnvVars:     []string{"ENV"},
 				Usage:       "enviroment, can be Develop, Product, or some other cumtomize value",
-				Destination: &config.AppConfig.ConfigDir,
+				Destination: &config.AppConfig.Env,
 			},
 			&cli.StringFlag{
 				Name:        "conf-dir",

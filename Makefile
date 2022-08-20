@@ -5,7 +5,10 @@ all: clean swagger build
 swagger:
 	swag init -g api.go -d ./pkg/api
 
-build:
+env:
+	source ${PWD}/scripts/env.sh && pwd
+
+build: env
 	${PWD}/scripts/build.sh
 
 clean:

@@ -16,7 +16,7 @@ git clone https://github.com/bitrainforest/PandaAgent.git
 cd PandaAgent && make build
 ```
 
-The executable file is in `./output/bin`.
+The executable file is in `./output/bin` and we will copy it into `/usr/local/bin/`.
 
 ## Usage
 
@@ -44,35 +44,35 @@ GLOBAL OPTIONS:
 ### Run the agnet
 
 ```shell
-panda --conf-dir [your config path] --log-dir [your log path] run
+panda --conf-dir [your config path] --log-dir [your log path] --env [Default, Testing, Product...] run
 ```
 
 ## Config Example
 
 ```shell
-Product: ## This key should be consistent with '--env', default is 'Testing'
+Default: ## This key should be consistent with '--env', default is 'Default'
  Transformer:
    MaxDownloader: 5  ## Max downloader exist in agent
    MaxDownloadRetry: 3 ## Max retries for one download task
    TransformPartSize: 5242880 ## The single part size when download large file
    SingleDownloadMaxWorkers: 5  ## Parallel workers in multipart download
  Miner:
-   MinerSealedPath: "/your/sealed/path"
-   MinerSealedCachePath: "/your/cache/path"
-   APIToken: "yourMinerAPIToken"
-   ID: "youreMinerID"
-   StorageID: "yourSealedStorageID"
- Log:
-   Level: "Debug"
-   Dir: "/your/log/path"
- PandaRemote:
-   Address: "Address"
-   QueryURL: "QueryURL"
-   CallBack: "CallBack"
-   DownloadURL: "DownloadURL"
+   MinerSealedPath: '/your/sealed/path'
+   MinerSealedCachePath: '/your/cache/path'
+   APIToken: 'yourMinerAPIToken'
+   ID: 'txxxx'
+   StorageID: 'yourSealedStorageID'
+   Address: 'localhost:1234'
+Log:
+   Level: 'Debug'
+   Dir: '/your/log/path'
+Platform:
+   Token: 'pandaToken'
    Timeout: 5
-   HeartURL: "HeartURL"
-   CheckFrequency: "10s"
-   HeartFrequency: "5s"
-   Token: "PandaToken"
+   CheckFrequency: '10s'
+   HeartFrequency: '5s'
+   QueryURL: "https://xxx.com/sector/downloadable/list"
+   CallBack: "https://xxx.com/sector/downloaded/callback"
+   DownloadURL: "https://xxx.com/"
+   HeartURL: "https://xxx.com/agent/heartbeat"
 ```
