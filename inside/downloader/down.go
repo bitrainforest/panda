@@ -378,14 +378,14 @@ func (d *Downloader) startDownloadWorker() {
 	for {
 		select {
 		case p, ok := <-d.downCh:
-			log.Debug().Msgf("[Downloader] worker receive a download part: %+v", p)
+			log.Debug().Msgf("[Downloader] worker receive a download part: %+v for sector: %d", p, d.sectorID)
 			if !ok {
 				log.Info().Msgf("[Downloader] worker's downCh is closed")
 				return
 			}
 
 			if err := d.downloadRange(p.start, p.end); err != nil {
-				log.Error().Msgf("[Downloader] retry download part: %+v, downloadRange err: %s\n", p, err)
+				log.Error().Msgf("[Downloader] retry download sector: %d. part: %+v, downloadRange err: %s\n", d.sectorID, p, err)
 				// retry until successfully
 				go func() {
 					d.downCh <- p
@@ -393,7 +393,7 @@ func (d *Downloader) startDownloadWorker() {
 				continue
 			}
 
-			log.Debug().Msgf("[Downloader download part: %+v successfully", p)
+			log.Debug().Msgf("[Downloader download sector: %d part: %+v successfully", d.sectorID, p)
 			d.wg.Done()
 		case <-d.ctx.Done():
 			log.Debug().Msgf("[Downloader] worker's ctx done'")
