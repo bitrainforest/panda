@@ -8,7 +8,7 @@ swagger:
 env:
 	source ${PWD}/scripts/env.sh && pwd
 
-build: env
+build:
 	${PWD}/scripts/build.sh
 
 clean:
