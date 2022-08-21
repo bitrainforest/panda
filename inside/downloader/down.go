@@ -157,16 +157,19 @@ func (t *Transformer) Run(buf chan checker.Sector) {
 				s.Try += 1
 				if s.Try > t.MaxDownloadRetry {
 					log.Info().Msgf("[Transformer] miner: %s, sector: %d retry too much, do failed callback", t.minerID, s.ID)
-					if err := t.CallBack(DownloadCallBackContent{
-						Action:     ActionDownload,
-						Status:     StatusDownloadFailed,
-						StatusCode: StatusCodeFailed,
-						SectorIDs:  []string{strconv.Itoa(s.ID)},
-						MinerID:    t.minerID,
-						ErrMsg:     ErrRetryExceed.Error(),
-					}); err != nil {
-						log.Error().Msgf("[Transformer] callback err: %s", err)
-					}
+
+					/*
+						if err := t.CallBack(DownloadCallBackContent{
+							Action:     ActionDownload,
+							Status:     StatusDownloadFailed,
+							StatusCode: StatusCodeFailed,
+							SectorIDs:  []string{strconv.Itoa(s.ID)},
+							MinerID:    t.minerID,
+							ErrMsg:     ErrRetryExceed.Error(),
+						}); err != nil {
+							log.Error().Msgf("[Transformer] callback err: %s", err)
+						}
+					*/
 
 					t.UnProcessing(s.ID)
 					continue
@@ -403,14 +406,15 @@ func (d *Downloader) startDownloadWorker() {
 }
 
 func (d *Downloader) downloadRange(start, end int64) error {
-	// first get file's lenght and check the range.
+	// first, get file's lengh and check the range.
 	req, err := http.NewRequest("GET", d.srcFileURL, nil)
 	if err != nil {
 		return err
 	}
 
-	req.Header.Set("Token", d.token) // need configurable
+	req.Header.Set("Token", d.token)
 	req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", start, end))
+	log.Debug().Msgf("[Downloader] downloadRange sector: %d req: %+v", d.sectorID, req)
 	resp, err := d.cli.Do(req)
 	if err != nil {
 		return err

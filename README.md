@@ -51,14 +51,14 @@ panda --conf-dir [your config path] --log-dir [your log path] --env [Default, Te
 
 ```shell
 Default: ## This key should be consistent with '--env', default is 'Default'
- Transformer:
-   MaxDownloader: 5  ## Max downloader exist in agent
-   MaxDownloadRetry: 3 ## Max retries for one download task
-   TransformPartSize: 5242880 ## The single part size when download large file
-   SingleDownloadMaxWorkers: 5  ## Parallel workers in multipart download
+ Transmission:
+   MaxParallelNumber: 5  ## Max downloader exist in agent
+   MaxRetryNumber: 3 ## Max retries for one download task
+   SliceSize: 5242880 ## The single part size when download large file
+   MaxSliceNumber: 5  ## Parallel workers in multipart download
  Miner:
-   MinerSealedPath: '/your/sealed/path'
-   MinerSealedCachePath: '/your/cache/path'
+   StoreSealedPath: '/your/sealed/path'
+   StoreCachePath: '/your/cache/path'
    APIToken: 'yourMinerAPIToken'
    ID: 'txxxx'
    StorageID: 'yourSealedStorageID'

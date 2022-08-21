@@ -18,7 +18,8 @@ import (
 )
 
 const (
-	AgentStatusNormal = 2
+	AgentStatusNormal      = 2
+	AgentStatusDownloading = 3
 )
 
 type Checker struct {

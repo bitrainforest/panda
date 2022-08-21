@@ -28,15 +28,15 @@ type Config struct {
 	ConfigDir   string `yaml:"-"`
 	Env         string `yaml:"-"`
 	Transformer struct {
-		MaxDownloader            int    `yaml:"MaxDownloader"`
-		MaxDownloadRetry         int    `yaml:"MaxDownloadRetry"`
-		TransformPartSize        int    `yaml:"TransformPartSize"`
-		SingleDownloadMaxWorkers int    `yaml:"SingleDownloadMaxWorkers"`
+		MaxDownloader            int    `yaml:"MaxParallelNumber"`
+		MaxDownloadRetry         int    `yaml:"MaxRetryNumber"`
+		TransformPartSize        int    `yaml:"SliceSize"`
+		SingleDownloadMaxWorkers int    `yaml:"MaxSliceNumber"`
 		WorkDir                  string `yaml:"WorkDir"`
-	} `yaml:"Transformer"`
+	} `yaml:"Transmission"`
 	Miner struct {
-		SealedPath      string `yaml:"MinerSealedPath"`
-		SealedCachePath string `yaml:"MinerSealedCachePath"`
+		SealedPath      string `yaml:"StoreSealedPath"`
+		SealedCachePath string `yaml:"StoreCachePath"`
 		APIToken        string `yaml:"APIToken"`
 		ID              string `yaml:"ID"`
 		StorageID       string `yaml:"StorageID"`
