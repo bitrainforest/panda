@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/bitrainforest/PandaAgent/inside/config"
+	"github.com/bitrainforest/PandaAgent/inside/downloader"
+	"github.com/bitrainforest/PandaAgent/inside/types"
 	"github.com/rs/zerolog/log"
 )
 
@@ -87,8 +89,12 @@ type AgentStatus struct {
 
 // just ping, we do not hold the connection.
 func (c Checker) ping() error {
+	status := AgentStatusNormal
+	if downloader.Downloading() {
+		status = AgentStatusDownloading
+	}
 	as := AgentStatus{
-		Status: AgentStatusNormal,
+		Status: status,
 	}
 	c.Lock()
 	as.NeedDownload = c.sectorsTotal
@@ -122,7 +128,7 @@ func (c Checker) ping() error {
 }
 
 // checker will get downloadable sectors and send it to channel ch
-func (c Checker) Check(ch chan Sector) {
+func (c Checker) Check(ch chan types.Sector) {
 	go func() {
 		ticker := time.Tick(c.checkFrequency)
 		for {
@@ -157,12 +163,6 @@ func (c Checker) Check(ch chan Sector) {
 	}()
 }
 
-type Sector struct {
-	ID int
-	// we max retry three times
-	Try int
-}
-
 type checkResponse struct {
 	Code int    `json:"code,omitempty"`
 	Msg  string `json:"msg,omitempty"`
@@ -180,7 +180,7 @@ type DataItem struct {
 	SectorType string `json:"sectorType,omitempty"`
 }
 
-func (c Checker) check() ([]Sector, error) {
+func (c Checker) check() ([]types.Sector, error) {
 	req, err := http.NewRequest("GET", c.checkURL, nil)
 	if err != nil {
 		return nil, err
@@ -215,14 +215,14 @@ func (c Checker) check() ([]Sector, error) {
 	}
 
 	if len(result.Data.List) > 0 {
-		sectors := make([]Sector, 0, 5)
+		sectors := make([]types.Sector, 0, 5)
 		for _, item := range result.Data.List {
 			if item.MinerID != c.minerID {
 				continue
 			}
 
 			sectorID, _ := strconv.Atoi(item.SectorId)
-			sectors = append(sectors, Sector{
+			sectors = append(sectors, types.Sector{
 				ID:  sectorID,
 				Try: 0,
 			})

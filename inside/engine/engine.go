@@ -6,13 +6,14 @@ import (
 	"github.com/bitrainforest/PandaAgent/inside/checker"
 	"github.com/bitrainforest/PandaAgent/inside/config"
 	"github.com/bitrainforest/PandaAgent/inside/downloader"
+	"github.com/bitrainforest/PandaAgent/inside/types"
 	"github.com/rs/zerolog/log"
 )
 
 type Engine struct {
 	Transformer *downloader.Transformer
 	Checker     checker.Checker
-	Buf         chan checker.Sector
+	Buf         chan types.Sector
 	ctx         context.Context
 	cancle      context.CancelFunc
 }
@@ -21,7 +22,7 @@ func InitEngine(conf config.Config, ctx context.Context) Engine {
 	var engine Engine
 	engine.Transformer = downloader.InitTransformer(conf, ctx)
 	engine.Checker = checker.InitChecker(conf, ctx)
-	engine.Buf = make(chan checker.Sector, 1024)
+	engine.Buf = make(chan types.Sector, 1024)
 	engine.ctx, engine.cancle = context.WithCancel(ctx)
 	return engine
 }

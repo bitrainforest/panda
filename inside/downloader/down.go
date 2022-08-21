@@ -17,9 +17,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bitrainforest/PandaAgent/inside/checker"
 	"github.com/bitrainforest/PandaAgent/inside/config"
 	"github.com/bitrainforest/PandaAgent/inside/minerclient"
+	"github.com/bitrainforest/PandaAgent/inside/types"
 	"github.com/patrickmn/go-cache"
 	"github.com/rs/zerolog/log"
 )
@@ -36,8 +36,13 @@ const (
 )
 
 var (
-	ErrRetryExceed = errors.New("retry exceed")
+	ErrRetryExceed    = errors.New("retry exceed")
+	GlobalTransformer *Transformer
 )
+
+func Downloading() bool {
+	return GlobalTransformer.Downloading()
+}
 
 type Transformer struct {
 	sync.Mutex
@@ -52,7 +57,7 @@ type Transformer struct {
 	singleDownloadMaxWorkers int
 	transformPartSize        int
 	// ch is used for control the number of downloader
-	ch          chan checker.Sector
+	ch          chan types.Sector
 	ctx         context.Context
 	cancel      context.CancelFunc
 	callBackURL string
@@ -82,12 +87,17 @@ func InitTransformer(conf config.Config, ctx context.Context) *Transformer {
 		processingM:              make(map[int]bool),
 		c:                        cache.New(5*time.Minute, 10*time.Minute),
 	}
-	t.ch = make(chan checker.Sector, t.MaxDownloader)
+	t.ch = make(chan types.Sector, t.MaxDownloader)
 	t.ctx, t.cancel = context.WithCancel(ctx)
 
 	log.Info().Msgf("[Transformer] init: %+v", t)
-
+	GlobalTransformer = t
 	return t
+}
+
+// not very precise
+func (t *Transformer) Downloading() bool {
+	return len(t.ch) > 0
 }
 
 func (t *Transformer) UnProcessing(sectorID int) {
@@ -109,7 +119,7 @@ func (t *Transformer) processed(sectorID string) bool {
 }
 
 // todo: run code need improve
-func (t *Transformer) Run(buf chan checker.Sector) {
+func (t *Transformer) Run(buf chan types.Sector) {
 	go func() {
 		for {
 			select {
