@@ -189,7 +189,12 @@ func (t *Transformer) Run(buf chan types.Sector) {
 					srcURL string
 				)
 
-				target = fmt.Sprintf("%s/s-%s-%d", t.SealedDir, t.minerID, s.ID)
+				minerID := t.minerID
+				// the minerID may be t10000, f10000....., but we store it only named t10000
+				if !strings.HasPrefix(minerID, "t") {
+					minerID = "t" + minerID[1:]
+				}
+				target = fmt.Sprintf("%s/s-%s-%d", t.SealedDir, minerID, s.ID)
 				srcURL = fmt.Sprintf("%ssealedsectors/%s/%d", t.downloadURL, t.minerID, s.ID)
 				if _, err := os.Stat(target); err == nil {
 					// remove if exist
