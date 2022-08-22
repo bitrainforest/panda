@@ -228,29 +228,33 @@ func (t *Transformer) Run(buf chan types.Sector) {
 				}
 
 				log.Info().Msgf("[Transformer] miner: %s, sector: %d download success, do callback", t.minerID, s.ID)
-				if err := t.CallBack(DownloadCallBackContent{
-					Action:     ActionDownload,
-					Status:     StatusDownloadSuccessful,
-					StatusCode: StatusCodeOK,
-					SectorIDs:  []string{strconv.Itoa(s.ID)},
-					MinerID:    t.minerID,
-				}); err != nil {
-					log.Error().Msgf("[Transformer] callback err: %s", err)
-				}
+				/*
+					if err := t.CallBack(DownloadCallBackContent{
+						Action:     ActionDownload,
+						Status:     StatusDownloadSuccessful,
+						StatusCode: StatusCodeOK,
+						SectorIDs:  []string{strconv.Itoa(s.ID)},
+						MinerID:    t.minerID,
+					}); err != nil {
+						log.Error().Msgf("[Transformer] callback err: %s", err)
+					}
+				*/
 
 				if err := t.DeclareSector(s.ID); err != nil {
 					// if declare failed, we need user declare sector in current implement.
 					log.Error().Msgf("[Transformer] miner: %s DeclareSector: %d err: %s", t.minerID, s.ID, err)
-					if err := t.CallBack(DownloadCallBackContent{
-						Action:     ActionDeclare,
-						Status:     StatusDeclareFailed,
-						StatusCode: StatusCodeFailed,
-						SectorIDs:  []string{strconv.Itoa(s.ID)},
-						MinerID:    t.minerID,
-						ErrMsg:     err.Error(),
-					}); err != nil {
-						log.Error().Msgf("[Transformer] callback err: %s", err)
-					}
+					/*
+						if err := t.CallBack(DownloadCallBackContent{
+							Action:     ActionDeclare,
+							Status:     StatusDeclareFailed,
+							StatusCode: StatusCodeFailed,
+							SectorIDs:  []string{strconv.Itoa(s.ID)},
+							MinerID:    t.minerID,
+							ErrMsg:     err.Error(),
+						}); err != nil {
+							log.Error().Msgf("[Transformer] callback err: %s", err)
+						}
+					*/
 
 					continue
 				} else {
