@@ -169,16 +169,16 @@ func (t *Transformer) Run(buf chan types.Sector) {
 					log.Info().Msgf("[Transformer] miner: %s, sector: %d retry too much, do failed callback", t.minerID, s.ID)
 
 					/*
-						if err := t.CallBack(DownloadCallBackContent{
-							Action:     ActionDownload,
-							Status:     StatusDownloadFailed,
-							StatusCode: StatusCodeFailed,
-							SectorIDs:  []string{strconv.Itoa(s.ID)},
-							MinerID:    t.minerID,
-							ErrMsg:     ErrRetryExceed.Error(),
-						}); err != nil {
-							log.Error().Msgf("[Transformer] callback err: %s", err)
-						}
+					   if err := t.CallBack(DownloadCallBackContent{
+					     Action:     ActionDownload,
+					     Status:     StatusDownloadFailed,
+					     StatusCode: StatusCodeFailed,
+					     SectorIDs:  []string{strconv.Itoa(s.ID)},
+					     MinerID:    t.minerID,
+					     ErrMsg:     ErrRetryExceed.Error(),
+					   }); err != nil {
+					     log.Error().Msgf("[Transformer] callback err: %s", err)
+					   }
 					*/
 
 					t.UnProcessing(s.ID)
@@ -583,7 +583,13 @@ func (d *Downloader) DownloadFile() error {
 	// cache file need decompress
 	if d.decompression {
 		log.Info().Msgf("[Downloader] untar targetFile: %s, targetPath: %s", d.targetFile, d.targetPath)
-		os.Mkdir(fmt.Sprintf("%s/s-%s-%d", d.targetPath, d.minerID, d.sectorID), os.FileMode(0664))
+		minerID := d.minerID
+		// the minerID may be t10000, f10000....., but we store it only named t10000
+		if !strings.HasPrefix(minerID, "t") {
+			minerID = "t" + minerID[1:]
+		}
+
+		os.Mkdir(fmt.Sprintf("%s/s-%s-%d", d.targetPath, minerID, d.sectorID), os.FileMode(0664))
 		if err := untar(d.targetFile, strings.TrimSuffix(d.targetPath, "cache")); err != nil {
 			log.Error().Msgf("[Downloader] untar err: %s\n", err)
 			// the file maybe broken, need retry
