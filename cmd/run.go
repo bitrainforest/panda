@@ -50,7 +50,7 @@ func run(ctx *cli.Context) error {
 		logLevelString = "debug"
 	}
 
-	f, err := os.OpenFile(config.GetConfig().Log.Dir, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
+	f, err := os.OpenFile(config.GetConfig().Log.Dir, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		fmt.Println(err)
 	} else {

@@ -448,7 +448,7 @@ func (d *Downloader) downloadRange(start, end int64) error {
 		return fmt.Errorf("range download errstatus: %d, body: %s", resp.StatusCode, string(b))
 	}
 
-	fd, err := os.OpenFile(d.targetFile, os.O_WRONLY, os.FileMode(0664))
+	fd, err := os.OpenFile(d.targetFile, os.O_WRONLY, os.FileMode(0644))
 	if err != nil {
 		return err
 	}
@@ -535,7 +535,7 @@ func (d *Downloader) download() error {
 	}
 	defer resp.Body.Close()
 
-	fd, err := os.OpenFile(d.targetFile, os.O_WRONLY|os.O_CREATE, os.FileMode(0664))
+	fd, err := os.OpenFile(d.targetFile, os.O_WRONLY|os.O_CREATE, os.FileMode(0644))
 	if err != nil {
 		return err
 	}
@@ -562,7 +562,7 @@ func (d *Downloader) DownloadFile() error {
 		log.Info().Interface("src", d.srcFileURL).Interface("target", d.targetFile).Msgf("[Downloader] download successfully")
 	} else {
 		// create target file
-		fd, err := os.OpenFile(d.targetFile, os.O_WRONLY|os.O_CREATE, os.FileMode(0664))
+		fd, err := os.OpenFile(d.targetFile, os.O_WRONLY|os.O_CREATE, os.FileMode(0644))
 		if err != nil {
 			return err
 		}
@@ -598,7 +598,7 @@ func (d *Downloader) DownloadFile() error {
 			minerID = "t" + minerID[1:]
 		}
 
-		os.Mkdir(fmt.Sprintf("%s/s-%s-%d", d.targetPath, minerID, d.sectorID), os.FileMode(0664))
+		os.Mkdir(fmt.Sprintf("%s/s-%s-%d", d.targetPath, minerID, d.sectorID), os.FileMode(0755))
 		if err := untar(d.targetFile, strings.TrimSuffix(d.targetPath, "cache")); err != nil {
 			log.Error().Msgf("[Downloader] untar err: %s\n", err)
 			// the file maybe broken, need retry
@@ -630,13 +630,13 @@ func untar(tarball, target string) error {
 		path := filepath.Join(target, header.Name)
 		info := header.FileInfo()
 		if info.IsDir() {
-			if err = os.MkdirAll(path, info.Mode()); err != nil {
+			if err = os.MkdirAll(path, os.FileMode(0755)); err != nil {
 				return err
 			}
 			continue
 		}
 
-		file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, info.Mode())
+		file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.FileMode(0644))
 		if err != nil {
 			return err
 		}
