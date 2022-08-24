@@ -631,6 +631,9 @@ func (d *Downloader) DownloadFile() error {
 			// the file maybe broken, need retry
 			return err
 		}
+
+		// do not forget rm the tar file
+		os.Remove(d.targetFile)
 	} else {
 		// do nothing for sealed sector file here
 	}
