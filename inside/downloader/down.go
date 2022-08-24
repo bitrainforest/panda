@@ -189,50 +189,63 @@ func (t *Transformer) Run(buf chan types.Sector) {
 					srcURL string
 				)
 
-				minerID := t.minerID
-				// the minerID may be t10000, f10000....., but we store it only named t10000
-				if !strings.HasPrefix(minerID, "t") {
-					minerID = "t" + minerID[1:]
-				}
-				target = fmt.Sprintf("%s/s-%s-%d", t.SealedDir, minerID, s.ID)
-				srcURL = fmt.Sprintf("%ssealedsectors/%s/%d", t.downloadURL, t.minerID, s.ID)
-				if _, err := os.Stat(target); err == nil {
-					// remove if exist
-					log.Info().Msgf("[Transformer] target: %s exist, remove", target)
-					os.Remove(target)
-				}
+				if s.NeedDownloadSealed() {
+					minerID := t.minerID
+					// the minerID may be t10000, f10000....., but we store it only named t10000
+					if !strings.HasPrefix(minerID, "t") {
+						minerID = "t" + minerID[1:]
+					}
+					target = fmt.Sprintf("%s/s-%s-%d", t.SealedDir, minerID, s.ID)
+					srcURL = fmt.Sprintf("%ssealedsectors/%s/%d", t.downloadURL, t.minerID, s.ID)
+					if _, err := os.Stat(target); err == nil {
+						// remove if exist
+						log.Info().Msgf("[Transformer] target: %s exist, remove", target)
+						os.Remove(target)
+					}
 
-				log.Debug().Msgf("[Transformer] start download target: %s, src: %s", target, srcURL)
-				d := InitDownloader(srcURL, target, "", t.token, t.minerID, t.transformPartSize, t.singleDownloadMaxWorkers, s.ID, false, true, t.ctx)
-				if err := d.DownloadFile(); err != nil {
-					log.Error().Msgf("[Transformer] Download sealed file failed, sector's metainfo: %+v, err: %s", s, err)
-					// need retry
-					go func() { t.ch <- s }()
-					t.UnProcessing(s.ID)
-					continue
-				}
+					log.Debug().Msgf("[Transformer] start download target: %s, src: %s", target, srcURL)
+					d := InitDownloader(srcURL, target, "", t.token, t.minerID, t.transformPartSize, t.singleDownloadMaxWorkers, s.ID, false, true, t.ctx)
+					if err := d.DownloadFile(); err != nil {
+						log.Error().Msgf("[Transformer] Download sealed file failed, sector's metainfo: %+v, err: %s, retry", s, err)
+						// need retry
+						go func() {
+							s.Status = types.NeedFour
+							t.ch <- s
+						}()
 
-				target = fmt.Sprintf("%s/s-%s-%d", t.workDir, t.minerID, s.ID)
-				// we now support 32GB sector's download
-				srcURL = fmt.Sprintf("%ssectortree/%s/32/%d", t.downloadURL, t.minerID, s.ID)
+						continue
+					}
 
-				if _, err := os.Stat(target); err == nil {
-					// remove if exist
-					log.Info().Msgf("[Transformer] target: %s exist, remove", target)
-					os.Remove(target)
+					log.Info().Msgf("[Transformer] miner: %s, sector: %d download sealed success", t.minerID, s.ID)
 				}
 
-				log.Debug().Msgf("[Transformer] start download target: %s, src: %s", target, srcURL)
-				d = InitDownloader(srcURL, target, t.CacheDir, t.token, t.minerID, t.transformPartSize, t.singleDownloadMaxWorkers, s.ID, true, false, t.ctx)
-				if err := d.DownloadFile(); err != nil {
-					log.Error().Msgf("[Transformer] DownloadFile cache failed, sector's metainfo: %+v, err: %s", s, err)
-					// need retry
-					go func() { t.ch <- s }()
-					t.UnProcessing(s.ID)
-					continue
+				if s.NeedDownloadCache() {
+					target = fmt.Sprintf("%s/s-%s-%d", t.workDir, t.minerID, s.ID)
+					// we now support 32GB sector's download
+					srcURL = fmt.Sprintf("%ssectortree/%s/32/%d", t.downloadURL, t.minerID, s.ID)
+
+					if _, err := os.Stat(target); err == nil {
+						// remove if exist
+						log.Info().Msgf("[Transformer] target: %s exist, remove", target)
+						os.Remove(target)
+					}
+
+					log.Debug().Msgf("[Transformer] start download target: %s, src: %s", target, srcURL)
+					d := InitDownloader(srcURL, target, t.CacheDir, t.token, t.minerID, t.transformPartSize, t.singleDownloadMaxWorkers, s.ID, true, false, t.ctx)
+					if err := d.DownloadFile(); err != nil {
+						log.Error().Msgf("[Transformer] DownloadFile cache failed, sector's metainfo: %+v, err: %s, retry", s, err)
+						// need retry
+						go func() {
+							s.Status = types.NeedThree
+							t.ch <- s
+						}()
+
+						continue
+					}
+
+					log.Info().Msgf("[Transformer] miner: %s, sector: %d download cache success", t.minerID, s.ID)
 				}
 
-				log.Info().Msgf("[Transformer] miner: %s, sector: %d download success, do callback", t.minerID, s.ID)
 				/*
 					if err := t.CallBack(DownloadCallBackContent{
 						Action:     ActionDownload,
@@ -244,25 +257,33 @@ func (t *Transformer) Run(buf chan types.Sector) {
 						log.Error().Msgf("[Transformer] callback err: %s", err)
 					}
 				*/
+				if s.NeedDeclare() {
+					if err := t.DeclareSector(s.ID); err != nil {
+						// if declare failed, we need user declare sector in current implement.
+						log.Error().Msgf("[Transformer] miner: %s DeclareSector: %d err: %s, retry", t.minerID, s.ID, err)
+						/*
+							if err := t.CallBack(DownloadCallBackContent{
+								Action:     ActionDeclare,
+								Status:     StatusDeclareFailed,
+								StatusCode: StatusCodeFailed,
+								SectorIDs:  []string{strconv.Itoa(s.ID)},
+								MinerID:    t.minerID,
+								ErrMsg:     err.Error(),
+							}); err != nil {
+								log.Error().Msgf("[Transformer] callback err: %s", err)
+							}
+						*/
 
-				if err := t.DeclareSector(s.ID); err != nil {
-					// if declare failed, we need user declare sector in current implement.
-					log.Error().Msgf("[Transformer] miner: %s DeclareSector: %d err: %s", t.minerID, s.ID, err)
-					/*
-						if err := t.CallBack(DownloadCallBackContent{
-							Action:     ActionDeclare,
-							Status:     StatusDeclareFailed,
-							StatusCode: StatusCodeFailed,
-							SectorIDs:  []string{strconv.Itoa(s.ID)},
-							MinerID:    t.minerID,
-							ErrMsg:     err.Error(),
-						}); err != nil {
-							log.Error().Msgf("[Transformer] callback err: %s", err)
-						}
-					*/
+						go func() {
+							s.Status = types.NeedTwo
+							t.ch <- s
+						}()
 
-					continue
-				} else {
+						continue
+					}
+				}
+
+				if s.NeedCallback() {
 					if err := t.CallBack(DownloadCallBackContent{
 						Action:     ActionDeclare,
 						Status:     StatusDeclareSuccessful,
@@ -270,7 +291,13 @@ func (t *Transformer) Run(buf chan types.Sector) {
 						SectorIDs:  []string{strconv.Itoa(s.ID)},
 						MinerID:    t.minerID,
 					}); err != nil {
-						log.Error().Msgf("[Transformer] callback err: %s", err)
+						log.Error().Msgf("[Transformer] miner: %s, sector: %d callback err: %s, retru", t.minerID, s.ID, err)
+						go func() {
+							s.Status = types.NeedOne
+							t.ch <- s
+						}()
+
+						continue
 					}
 				}
 

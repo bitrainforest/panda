@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -13,7 +14,10 @@ import (
 
 const (
 	MethodFilecoinStorageDeclareSector = "Filecoin.StorageDeclareSector"
-	DefaultDeclareID                   = 0
+	MethodFilecoinStorageFindSector    = "Filecoin.StorageFindSector"
+	DefaultID                          = 0
+	// 32GB size sector
+	SectorDefaultSize = 34359738368
 )
 
 // same as lotus source code. (https://github.com/filecoin-project/lotus/tree/master/storage/sealer/storiface/filetype.go#L11)
@@ -76,6 +80,17 @@ type DeclareContent struct {
 	Params    []interface{} `json:"params"`
 }
 
+type FindSectorContent struct {
+	Method string        `json:"method"`
+	ID     int           `json:"id"`
+	Params []interface{} `json:"params"`
+}
+
+type FindSectorResult struct {
+	JsonRPC string        `json:"jsonrpc"`
+	Result  []interface{} `json:"result"`
+}
+
 type MetaInfo struct {
 	Miner  int `json:"Miner"`
 	Number int `json:"Number"`
@@ -92,10 +107,60 @@ func InitMinerCli(conf config.Config) MinerCli {
 	}
 }
 
+func (mc MinerCli) SectorFind(sectorID int, sft SectorFileType) (bool, error) {
+	content := FindSectorContent{
+		Method: MethodFilecoinStorageDeclareSector,
+		ID:     DefaultID,
+	}
+
+	content.Params = append(content.Params, MetaInfo{
+		Miner:  mc.id,
+		Number: sectorID,
+	})
+	content.Params = append(content.Params, sft)
+	content.Params = append(content.Params, SectorDefaultSize)
+	content.Params = append(content.Params, true)
+
+	res, err := json.Marshal(content)
+	if err != nil {
+		return false, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, mc.url, bytes.NewBuffer(res))
+	if err != nil {
+		return false, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", mc.apiToken)
+
+	resp, err := mc.cli.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode/100 != 2 {
+		return false, fmt.Errorf("SectorFind err status: %d", resp.StatusCode)
+	}
+
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return false, err
+	}
+
+	findRes := FindSectorResult{}
+	if err := json.Unmarshal(b, &findRes); err != nil {
+		return false, err
+	}
+
+	return len(findRes.Result) > 0, nil
+}
+
 func (mc MinerCli) SectorDeclare(sectorID int, sft SectorFileType) error {
 	content := DeclareContent{
 		Method:    MethodFilecoinStorageDeclareSector,
-		DeclareID: DefaultDeclareID,
+		DeclareID: DefaultID,
 	}
 
 	content.Params = append(content.Params, mc.storageID)
@@ -126,6 +191,15 @@ func (mc MinerCli) SectorDeclare(sectorID int, sft SectorFileType) error {
 
 	if resp.StatusCode/100 != 2 {
 		return fmt.Errorf("SectorDeclare err status: %d", resp.StatusCode)
+	}
+
+	exist, err := mc.SectorFind(sectorID, sft)
+	if err != nil {
+		return err
+	}
+
+	if !exist {
+		return fmt.Errorf("SectorDeclare but not found")
 	}
 
 	return nil

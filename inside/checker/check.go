@@ -223,8 +223,9 @@ func (c Checker) check() ([]types.Sector, error) {
 
 			sectorID, _ := strconv.Atoi(item.SectorId)
 			sectors = append(sectors, types.Sector{
-				ID:  sectorID,
-				Try: 0,
+				ID:     sectorID,
+				Try:    0,
+				Status: types.NeedFour,
 			})
 		}
 
