@@ -395,6 +395,12 @@ func InitDownloader(downloadURL, targetFile, targetPath, token, minerID string, 
 				TLSClientConfig: &tls.Config{
 					InsecureSkipVerify: true,
 				},
+				TLSHandshakeTimeout:   5 * time.Second,
+				ResponseHeaderTimeout: 10 * time.Second,
+				MaxIdleConns:          50,
+				MaxIdleConnsPerHost:   1,
+				MaxConnsPerHost:       10,
+				IdleConnTimeout:       10 * time.Second,
 			},
 			// todo: config this timeout
 			// need increase if read response content timeout

@@ -46,6 +46,12 @@ func InitChecker(conf config.Config, parentCtx context.Context) Checker {
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
 			},
+			TLSHandshakeTimeout:   5 * time.Second,
+			ResponseHeaderTimeout: 10 * time.Second,
+			MaxIdleConns:          50,
+			MaxIdleConnsPerHost:   1,
+			MaxConnsPerHost:       10,
+			IdleConnTimeout:       10 * time.Second,
 		},
 		Timeout: time.Duration(conf.GH.Timeout) * time.Second,
 	}

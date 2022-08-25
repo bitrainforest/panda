@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/bitrainforest/PandaAgent/inside/config"
 )
@@ -99,7 +100,17 @@ type MetaInfo struct {
 func InitMinerCli(conf config.Config) MinerCli {
 	id, _ := strconv.Atoi(strings.TrimPrefix(strings.TrimPrefix(conf.Miner.ID, "t"), "0"))
 	return MinerCli{
-		cli:       http.DefaultClient,
+		cli: &http.Client{
+			Transport: &http.Transport{
+				TLSHandshakeTimeout:   5 * time.Second,
+				ResponseHeaderTimeout: 10 * time.Second,
+				MaxIdleConns:          50,
+				MaxIdleConnsPerHost:   1,
+				MaxConnsPerHost:       10,
+				IdleConnTimeout:       10 * time.Second,
+			},
+			Timeout: 10 * time.Second,
+		},
 		apiToken:  conf.Miner.APIToken,
 		url:       conf.Miner.Address,
 		id:        id,
