@@ -37,11 +37,15 @@ const (
 
 var (
 	ErrRetryExceed    = errors.New("retry exceed")
-	GlobalTransformer *Transformer
+	globalTransformer *Transformer
 )
 
 func Downloading() bool {
-	return GlobalTransformer.Downloading()
+	return globalTransformer.Downloading()
+}
+
+func GetGlobalTransformer() *Transformer {
+	return globalTransformer
 }
 
 type Transformer struct {
@@ -68,6 +72,7 @@ type Transformer struct {
 }
 
 func InitTransformer(conf config.Config, ctx context.Context) *Transformer {
+	//todo: add sync.Once
 	t := &Transformer{
 		cli: &http.Client{
 			Timeout: time.Duration(conf.GH.Timeout) * time.Second,
@@ -91,7 +96,7 @@ func InitTransformer(conf config.Config, ctx context.Context) *Transformer {
 	t.ctx, t.cancel = context.WithCancel(ctx)
 
 	log.Info().Msgf("[Transformer] init: %+v", t)
-	GlobalTransformer = t
+	globalTransformer = t
 	return t
 }
 
@@ -118,6 +123,25 @@ func (t *Transformer) processed(sectorID string) bool {
 	return false
 }
 
+func (t *Transformer) Skip(s types.Sector) bool {
+	t.Lock()
+	defer t.Unlock()
+	exist, ok := t.processingM[s.ID]
+	if ok && exist {
+		// this sector is processing, just skip
+		log.Info().Interface("sector", s.ID).Msgf("[Transformer] processing, skip")
+		return true
+	}
+
+	if t.processed(strconv.Itoa(s.ID)) {
+		// this sector is processed recently, just skip
+		log.Info().Interface("sector", s.ID).Msgf("[Transformer] processed recently, skip")
+		return true
+	}
+
+	return false
+}
+
 // todo: run code need improve
 func (t *Transformer) Run(buf chan types.Sector) {
 	go func() {
@@ -130,21 +154,8 @@ func (t *Transformer) Run(buf chan types.Sector) {
 				}
 
 				t.Lock()
-				exist, ok := t.processingM[s.ID]
-				if ok && exist {
-					// this sector is processing, just skip
-					t.Unlock()
-					log.Info().Interface("sector", s.ID).Msgf("[Transformer] processing, skip")
-					continue
-				}
 				t.processingM[s.ID] = true
 				t.Unlock()
-
-				if t.processed(strconv.Itoa(s.ID)) {
-					// this sector is processed recently, just skip
-					log.Info().Interface("sector", s.ID).Msgf("[Transformer] processed recently, skip")
-					continue
-				}
 
 				log.Debug().Msgf("[Transformer] try download s: %+v", s)
 				t.ch <- s

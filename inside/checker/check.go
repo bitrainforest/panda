@@ -160,6 +160,10 @@ func (c Checker) Check(ch chan types.Sector) {
 
 				if len(res) > 0 {
 					for _, v := range res {
+						// avoid waste transform
+						if downloader.GetGlobalTransformer().Skip(v) {
+							continue
+						}
 						log.Info().Msgf("[Checker] Check get miner: %s sector: %d to download", c.minerID, v)
 						ch <- v
 					}
