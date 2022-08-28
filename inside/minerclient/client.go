@@ -120,7 +120,7 @@ func InitMinerCli(conf config.Config) MinerCli {
 
 func (mc MinerCli) SectorFind(sectorID int, sft SectorFileType) (bool, error) {
 	content := FindSectorContent{
-		Method: MethodFilecoinStorageDeclareSector,
+		Method: MethodFilecoinStorageFindSector,
 		ID:     DefaultID,
 	}
 
