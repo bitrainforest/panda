@@ -32,9 +32,9 @@ func InitEngine(conf config.Config, ctx context.Context) Engine {
 
 func (eg Engine) Run() error {
 	log.Info().Msgf("[Engine] Engine Start.")
-	//eg.Checker.Ping()
-	//eg.Checker.Check(eg.Buf)
-	//eg.Transformer.Run(eg.Buf)
+	eg.Checker.Ping()
+	eg.Checker.Check(eg.Buf)
+	eg.Transformer.Run(eg.Buf)
 	eg.DealTransformer.Run()
 	return nil
 }

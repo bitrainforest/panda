@@ -92,18 +92,47 @@ func (dt *DealTransform) Run() {
 	}()
 }
 
+type Deal struct {
+	UUID                string `json:"uuid,omitempty"`
+	PieceID             string `json:"pieceCID,omitempty"`
+	ClientPeerID        string `json:"clientPeerID,omitempty"`
+	PieceSize           int64  `json:"pieceSize,omitempty"`
+	Verified            bool   `json:"verified"`
+	SignedProposalCID   string `json:"signedProposalCID,omitempty"`
+	DealDataRootCID     string `json:"dealDataRootCID,omitempty"`
+	ClientAddress       string `json:"clientAddress,omitempty"`
+	CreatedAt           int64  `json:"createdAt,omitempty"`
+	ClientSignature     string `json:"clientSignature,omitempty"`
+	ClientSignatureData string `json:"clientSignatureData,omitempty"`
+}
+
 type DealContent struct {
-	Total   int          `json:"total,omitempty"`
-	Extra   string       `json:"extra,omitempty"`
-	Content []boost.Deal `json:"content,omitempty"`
+	Total   int    `json:"total,omitempty"`
+	Extra   string `json:"extra,omitempty"`
+	Content []Deal `json:"content,omitempty"`
 }
 
 func (dt *DealTransform) Transform() error {
 	var c DealContent
-	c.Content = make([]boost.Deal, 0, len(dt.buffer))
+	c.Content = make([]Deal, 0, len(dt.buffer))
 	c.Total = len(dt.buffer)
 	for _, d := range dt.buffer {
-		c.Content = append(c.Content, *d)
+		sigName, _ := d.ClientSignature.Name()
+		reqDeal := Deal{
+			UUID:                d.UUID,
+			PieceID:             d.PieceID,
+			ClientPeerID:        d.ClientPeerID,
+			PieceSize:           d.PieceSize,
+			Verified:            d.Verified,
+			SignedProposalCID:   d.SignedProposalCID,
+			DealDataRootCID:     d.DealDataRootCID,
+			ClientAddress:       d.ClientAddress,
+			CreatedAt:           d.CreatedAt.Unix(),
+			ClientSignature:     sigName,
+			ClientSignatureData: d.ClientSignatureData,
+		}
+
+		c.Content = append(c.Content, reqDeal)
 	}
 
 	content, err := json.Marshal(&c)

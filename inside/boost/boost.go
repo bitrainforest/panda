@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/rs/zerolog/log"
 )
 
@@ -16,17 +17,17 @@ const (
 )
 
 type Deal struct {
-	UUID                string `json:"uuid,omitempty"`
-	PieceID             string `json:"pieceCID,omitempty"`
-	ClientPeerID        string `json:"clientPeerID,omitempty"`
-	PieceSize           int64  `json:"pieceSize,omitempty"`
-	Verified            bool   `json:"verified,omitempty"`
-	SignedProposalCID   string `json:"signedProposalCID,omitempty"`
-	DealDataRootCID     string `json:"dealDataRootCID,omitempty"`
-	ClientAddress       string `json:"clientAddress,omitempty"`
-	CreatedAt           string `json:"createdAt,omitempty"`
-	ClientSignature     int    `json:"clientSignature,omitempty"`
-	ClientSignatureData string `json:"clientSignatureData,omitempty"`
+	UUID                string          `json:"uuid,omitempty"`
+	PieceID             string          `json:"pieceCID,omitempty"`
+	ClientPeerID        string          `json:"clientPeerID,omitempty"`
+	PieceSize           int64           `json:"pieceSize,omitempty"`
+	Verified            bool            `json:"verified,omitempty"`
+	SignedProposalCID   string          `json:"signedProposalCID,omitempty"`
+	DealDataRootCID     string          `json:"dealDataRootCID,omitempty"`
+	ClientAddress       string          `json:"clientAddress,omitempty"`
+	CreatedAt           time.Time       `json:"createdAt,omitempty"`
+	ClientSignature     acrypto.SigType `json:"clientSignature,omitempty"`
+	ClientSignatureData string          `json:"clientSignatureData,omitempty"`
 }
 
 type BoostCli struct {
@@ -66,8 +67,8 @@ type BoostDealReq struct {
 
 type BoostDealResp struct {
 	Result struct {
-		DealUuid           string `json:"DealUuid,omitempty"`
-		CreatedAt          string `json:"CreatedAt,omitempty"`
+		DealUuid           string    `json:"DealUuid,omitempty"`
+		CreatedAt          time.Time `json:"CreatedAt,omitempty"`
 		ClientDealProposal struct {
 			Proposal struct {
 				PieceCID struct {
@@ -79,8 +80,8 @@ type BoostDealResp struct {
 				Provider     string `json:"Provider,omitempty"`
 			} `json:"Proposal,omitempty"`
 			ClientSignature struct {
-				Type int    `json:"type,omitempty"`
-				Data string `json:"Data,omitempty"`
+				Type acrypto.SigType `json:"type,omitempty"`
+				Data string          `json:"Data,omitempty"`
 			} `json:"ClientSignature,omitempty"`
 		} `json:"ClientDealProposal,omitempty"`
 		ClientPeerID string `json:"ClientPeerID,omitempty"`
