@@ -29,7 +29,7 @@ type Config struct {
 	Env       string `yaml:"-"`
 	Boost     struct {
 		APIToken   string `yaml:"APIToken"`
-		Address    string `yaml:"Address"`
+		RPCURL     string `yaml:"RPCURL"`
 		GraphQlURL string `yaml:"GraphQlURL"`
 	} `yaml:"Boost"`
 	Transformer struct {

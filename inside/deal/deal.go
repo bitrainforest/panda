@@ -50,9 +50,9 @@ func InitDealTransform(conf config.Config, parentCtx context.Context) *DealTrans
 	dt.token = conf.GH.Token
 	dt.frequency = conf.GH.DealFrequency
 	dt.dealTransformURL = conf.GH.DealURL
-	// 10 need configurable
+	//todo: 10 need configurable
 	dt.ch = make(chan *boost.Deal, 10)
-	dt.boostCli = boost.InitBoostCli(conf.Boost.Address, conf.Boost.GraphQlURL, conf.Boost.APIToken, dt.ch)
+	dt.boostCli = boost.InitBoostCli(conf.Boost.RPCURL, conf.Boost.GraphQlURL, conf.Boost.APIToken, dt.ch)
 	dt.buffer = make([]*boost.Deal, 0, 10)
 	dt.maxBuffer = 10
 
