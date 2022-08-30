@@ -199,6 +199,7 @@ func (mc MinerCli) SectorDeclare(sectorID int, sft SectorFileType) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode/100 != 2 {
 		return fmt.Errorf("SectorDeclare err status: %d", resp.StatusCode)

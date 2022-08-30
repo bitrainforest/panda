@@ -25,8 +25,13 @@ var (
 )
 
 type Config struct {
-	ConfigDir   string `yaml:"-"`
-	Env         string `yaml:"-"`
+	ConfigDir string `yaml:"-"`
+	Env       string `yaml:"-"`
+	Boost     struct {
+		APIToken   string `yaml:"APIToken"`
+		Address    string `yaml:"Address"`
+		GraphQlURL string `yaml:"GraphQlURL"`
+	} `yaml:"Boost"`
 	Transformer struct {
 		MaxDownloader            int    `yaml:"MaxParallelNumber"`
 		MaxDownloadRetry         int    `yaml:"MaxRetryNumber"`
@@ -49,11 +54,13 @@ type Config struct {
 	GH struct {
 		QueryURL       string        `yaml:"QueryURL"`
 		CallBack       string        `yaml:"CallBack"`
+		DealURL        string        `yaml:"DealURL"`
 		DownloadURL    string        `yaml:"DownloadURL"`
 		Timeout        int           `yaml:"Timeout"`
 		PingURL        string        `yaml:"HeartURL"`
 		CheckFrequency time.Duration `yaml:"CheckFrequency"`
 		HeartFrequency time.Duration `yaml:"HeartFrequency"`
+		DealFrequency  time.Duration `yaml:"DealFrequency"`
 		Token          string        `yaml:"Token"`
 	} `yaml:"Platform"`
 }
