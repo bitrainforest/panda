@@ -59,9 +59,9 @@ func InitBoostCli(url, graphQlURL, token string, ch chan *Deal) *BoostCli {
 
 // todo: use json-rpc tu marshal
 type BoostDealReq struct {
-	Method string        `json:"method,omitempty"`
-	Params []interface{} `json:"params,omitempty"`
-	ID     string        `json:"id,omitempty"`
+	Method string        `json:"method"`
+	Params []interface{} `json:"params"`
+	ID     int           `json:"id"`
 }
 
 type BoostDealResp struct {
@@ -95,7 +95,7 @@ type BoostDealResp struct {
 func (bc *BoostCli) GetBoostDeal(id string) (*Deal, error) {
 	bdq := BoostDealReq{
 		Method: MethodFilecoinBoostDeal,
-		ID:     "0",
+		ID:     0,
 	}
 
 	bdq.Params = append(bdq.Params, id)
@@ -111,7 +111,6 @@ func (bc *BoostCli) GetBoostDeal(id string) (*Deal, error) {
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", bc.apiToken)
-
 	resp, err := bc.cli.Do(req)
 	if err != nil {
 		return nil, err
@@ -169,7 +168,7 @@ type GraphQlRes struct {
 // todo:
 func (bc *BoostCli) GraphQl(offset, limit int) ([]DealID, error) {
 	query := fmt.Sprintf(`{"query":"query { deals(offset: %d, limit: %d) { deals { ID CreatedAt PieceCid } } }"}`, offset, limit)
-	req, err := http.NewRequest(http.MethodPost, bc.url, bytes.NewBufferString(query))
+	req, err := http.NewRequest(http.MethodPost, bc.graphQlURL, bytes.NewBufferString(query))
 	if err != nil {
 		return nil, err
 	}
@@ -215,6 +214,7 @@ func (bc *BoostCli) Start() {
 		res, err := bc.GraphQl(off, limit)
 		if err != nil {
 			log.Error().Msgf("[BoostCli] GraphQl off: %d, limit: %d, err: %s", off, limit, err)
+			time.Sleep(3 * time.Second)
 			continue
 		}
 
@@ -226,6 +226,7 @@ func (bc *BoostCli) Start() {
 				continue
 			}
 
+			log.Debug().Msgf("[BoostCli] GetBoostDeal deal: %s", deal.UUID)
 			bc.ch <- deal
 		}
 

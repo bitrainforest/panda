@@ -67,16 +67,19 @@ func (dt *DealTransform) Run() {
 			select {
 			case <-dt.doneCtx.Done():
 				log.Info().Msgf("[DealTransform] Stop.")
+				return
 			case <-ticker:
-				log.Info().Msgf("[DealTransform] do Transform.")
-				dt.Transform()
-				dt.buffer = dt.buffer[:0]
+				if len(dt.buffer) > 0 {
+					log.Info().Msgf("[DealTransform] do Transform.")
+					dt.Transform()
+					dt.buffer = dt.buffer[:0]
+				}
 			case d, ok := <-dt.ch:
 				if !ok {
 					log.Warn().Msgf("[DealTransform] channel closed.")
 					return
 				}
-
+				log.Debug().Msgf("[DealTransform] receive deal: %s", d.UUID)
 				if len(dt.buffer) >= dt.maxBuffer {
 					log.Info().Msgf("[DealTransform] do Transform as buffer is full.")
 					dt.Transform()
@@ -115,6 +118,7 @@ func (dt *DealTransform) Transform() error {
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("minerToken", dt.token)
+
 	resp, err := dt.cli.Do(req)
 	if err != nil {
 		return err
