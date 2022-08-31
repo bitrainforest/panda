@@ -22,8 +22,8 @@ type DealTransform struct {
 	cancle           context.CancelFunc
 	token            string
 	boostCli         *boost.BoostCli
-	ch               chan *boost.Deal
-	buffer           []*boost.Deal
+	ch               chan []byte
+	buffer           [][]byte
 	maxBuffer        int
 }
 
@@ -51,9 +51,9 @@ func InitDealTransform(conf config.Config, parentCtx context.Context) *DealTrans
 	dt.frequency = conf.GH.DealFrequency
 	dt.dealTransformURL = conf.GH.DealURL
 	//todo: 10 need configurable
-	dt.ch = make(chan *boost.Deal, 10)
+	dt.ch = make(chan []byte, 10)
 	dt.boostCli = boost.InitBoostCli(conf.Boost.RPCURL, conf.Boost.GraphQlURL, conf.Boost.APIToken, dt.ch)
-	dt.buffer = make([]*boost.Deal, 0, 10)
+	dt.buffer = make([][]byte, 0, 10)
 	dt.maxBuffer = 10
 
 	return &dt
@@ -79,7 +79,7 @@ func (dt *DealTransform) Run() {
 					log.Warn().Msgf("[DealTransform] channel closed.")
 					return
 				}
-				log.Debug().Msgf("[DealTransform] receive deal: %s", d.UUID)
+
 				if len(dt.buffer) >= dt.maxBuffer {
 					log.Info().Msgf("[DealTransform] do Transform as buffer is full.")
 					dt.Transform()
@@ -107,32 +107,33 @@ type Deal struct {
 }
 
 type DealContent struct {
-	Total   int    `json:"total,omitempty"`
-	Extra   string `json:"extra,omitempty"`
-	Content []Deal `json:"content,omitempty"`
+	Total   int      `json:"total,omitempty"`
+	Extra   string   `json:"extra,omitempty"`
+	Content []string `json:"content,omitempty"`
 }
 
 func (dt *DealTransform) Transform() error {
 	var c DealContent
-	c.Content = make([]Deal, 0, len(dt.buffer))
+	c.Content = make([]string, 0, len(dt.buffer))
 	c.Total = len(dt.buffer)
 	for _, d := range dt.buffer {
-		sigName, _ := d.ClientSignature.Name()
-		reqDeal := Deal{
-			UUID:                d.UUID,
-			PieceID:             d.PieceID,
-			ClientPeerID:        d.ClientPeerID,
-			PieceSize:           d.PieceSize,
-			Verified:            d.Verified,
-			SignedProposalCID:   d.SignedProposalCID,
-			DealDataRootCID:     d.DealDataRootCID,
-			ClientAddress:       d.ClientAddress,
-			CreatedAt:           d.CreatedAt.Unix(),
-			ClientSignature:     sigName,
-			ClientSignatureData: d.ClientSignatureData,
-		}
-
-		c.Content = append(c.Content, reqDeal)
+		/*
+			sigName, _ := d.ClientSignature.Name()
+			reqDeal := Deal{
+				UUID:                d.UUID,
+				PieceID:             d.PieceID,
+				ClientPeerID:        d.ClientPeerID,
+				PieceSize:           d.PieceSize,
+				Verified:            d.Verified,
+				SignedProposalCID:   d.SignedProposalCID,
+				DealDataRootCID:     d.DealDataRootCID,
+				ClientAddress:       d.ClientAddress,
+				CreatedAt:           d.CreatedAt.Unix(),
+				ClientSignature:     sigName,
+				ClientSignatureData: d.ClientSignatureData,
+			}
+		*/
+		c.Content = append(c.Content, string(d))
 	}
 
 	content, err := json.Marshal(&c)

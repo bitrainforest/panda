@@ -35,10 +35,10 @@ type BoostCli struct {
 	url        string
 	graphQlURL string
 	apiToken   string
-	ch         chan *Deal
+	ch         chan []byte
 }
 
-func InitBoostCli(url, graphQlURL, token string, ch chan *Deal) *BoostCli {
+func InitBoostCli(url, graphQlURL, token string, ch chan []byte) *BoostCli {
 	return &BoostCli{
 		cli: &http.Client{
 			Transport: &http.Transport{
@@ -93,7 +93,7 @@ type BoostDealResp struct {
 
 // send json-rpc Filecoin.BoostDeal to boostd server
 // todo:
-func (bc *BoostCli) GetBoostDeal(id string) (*Deal, error) {
+func (bc *BoostCli) GetBoostDeal(id string) ([]byte, error) {
 	bdq := BoostDealReq{
 		Method: MethodFilecoinBoostDeal,
 		ID:     0,
@@ -127,27 +127,29 @@ func (bc *BoostCli) GetBoostDeal(id string) (*Deal, error) {
 		return nil, err
 	}
 
-	dealRes := BoostDealResp{}
-	if err := json.Unmarshal(b, &dealRes); err != nil {
-		return nil, err
-	}
+	/*
+		dealRes := BoostDealResp{}
+		if err := json.Unmarshal(b, &dealRes); err != nil {
+			return nil, err
+		}
 
-	deal := Deal{
-		UUID:              dealRes.Result.DealUuid,
-		PieceID:           dealRes.Result.ClientDealProposal.Proposal.PieceCID.Root,
-		ClientPeerID:      dealRes.Result.ClientPeerID,
-		PieceSize:         int64(dealRes.Result.ClientDealProposal.Proposal.PieceSize),
-		Verified:          dealRes.Result.ClientDealProposal.Proposal.VerifiedDeal,
-		SignedProposalCID: dealRes.Result.ClientDealProposal.Proposal.PieceCID.Root,
-		DealDataRootCID:   dealRes.Result.DealDataRoot.Root,
-		ClientAddress:     dealRes.Result.ClientPeerID,
-		CreatedAt:         dealRes.Result.CreatedAt,
-		// todo: remember need fix or change
-		ClientSignature:     dealRes.Result.ClientDealProposal.ClientSignature.Type,
-		ClientSignatureData: dealRes.Result.ClientDealProposal.ClientSignature.Data,
-	}
+			deal := Deal{
+				UUID:              dealRes.Result.DealUuid,
+				PieceID:           dealRes.Result.ClientDealProposal.Proposal.PieceCID.Root,
+				ClientPeerID:      dealRes.Result.ClientPeerID,
+				PieceSize:         int64(dealRes.Result.ClientDealProposal.Proposal.PieceSize),
+				Verified:          dealRes.Result.ClientDealProposal.Proposal.VerifiedDeal,
+				SignedProposalCID: dealRes.Result.ClientDealProposal.Proposal.PieceCID.Root,
+				DealDataRootCID:   dealRes.Result.DealDataRoot.Root,
+				ClientAddress:     dealRes.Result.ClientPeerID,
+				CreatedAt:         dealRes.Result.CreatedAt,
+				// todo: remember need fix or change
+				ClientSignature:     dealRes.Result.ClientDealProposal.ClientSignature.Type,
+				ClientSignatureData: dealRes.Result.ClientDealProposal.ClientSignature.Data,
+			}
+	*/
 
-	return &deal, nil
+	return b, nil
 }
 
 type DealID struct {
@@ -166,7 +168,6 @@ type GraphQlRes struct {
 	} `json:"data,omitempty"`
 }
 
-// todo:
 func (bc *BoostCli) GraphQl(offset, limit int) ([]DealID, error) {
 	query := fmt.Sprintf(`{"query":"query { deals(offset: %d, limit: %d) { deals { ID CreatedAt PieceCid } } }"}`, offset, limit)
 	req, err := http.NewRequest(http.MethodPost, bc.graphQlURL, bytes.NewBufferString(query))
@@ -227,7 +228,7 @@ func (bc *BoostCli) Start() {
 				continue
 			}
 
-			log.Debug().Msgf("[BoostCli] GetBoostDeal deal: %s", deal.UUID)
+			//log.Debug().Msgf("[BoostCli] GetBoostDeal deal: %+v", deal)
 			bc.ch <- deal
 		}
 
